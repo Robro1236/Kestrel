@@ -10,7 +10,7 @@ A 3-day HackAIthon project for a Rotary Club hackathon. The theme is likely sust
 
 ## Submission requirements
 - GitHub repo link
-- A **publicly accessible app link** (the web build)
+- A **publicly accessible app link** (the web build): https://kestrel-tan.vercel.app
 
 ## Quality bar
 Read CONSTRAINTS.md before writing code. Do not weaken it to make a change pass. Run `npm run check:task` before calling a task done.

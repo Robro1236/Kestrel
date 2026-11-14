@@ -57,7 +57,7 @@ Why the split: Open-Meteo and NWS are fast and allow browser calls. Overpass, Ph
 - Expo SDK (latest), TypeScript, **Expo Router**, web output `single`.
 - `expo-location`, `@react-native-async-storage/async-storage`, `@supabase/supabase-js`.
 - Tests: `jest-expo`.
-- Hosting: **Vercel**. Build `npx expo export -p web`, output `dist`, rewrite all routes to `/index.html`.
+- Hosting: **Vercel**, live at https://kestrel-tan.vercel.app. Build `npx expo export -p web`, output `dist`, rewrite all routes to `/index.html`.
 - Env (`.env`, gitignored, also set in Vercel): `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`. The anon key is public by design. The service-role key lives only in Supabase function secrets.
 
 ### Screens
@@ -241,10 +241,13 @@ Total: ~25h human / ~8h with Claude Code. If T7 slips, the plan screen hides Nea
 | Unit | `buildKit`: base quantities, infants, kids, seniors/mobility, meds, pets, each hazard trigger, rating threshold | +8 |
 | Unit | `waterGuidance`: JMP threshold, missing country, disaster trigger, active alert, boil altitude boundary, bleach totals | +6 |
 | Unit | `showAirBanner` boundary and tiers; ZIP vs city detection in `location.ts` | +3 |
-| Integration | `lookup` function: 400 on bad coords, cache hit, stale fallback (local `supabase functions serve`) | +3 |
+| Integration | `lookup` function: 400 on bad coords, cache hit, stale fallback (jest with a fake cache, since `supabase functions serve` needs Docker; `npm run smoke` checks the deployed function) | +3 |
+| Load | 50 concurrent users for 20 s on a cached cell: p95 ≤ 1500 ms, 0 failures (`npm run load`, see `CONSTRAINTS.md`) | script |
 | E2E (manual, `/qa`) | Judge flow on the Vercel URL: ZIP path, GPS path, non-US city, offline reload | +4 |
 
 ## Rules for the implementing agent
+
+Read `CONSTRAINTS.md` first, and run `npm run check:task` before calling a task done.
 
 1. Acceptance criteria are the `protects / fails_when / no_claim` profile of each test: the observable it protects, the wrong result it rejects, and what green does not prove. Never "make the tests pass".
 2. Real code and real tests land in the same change; a placeholder, a stub assertion or a test deferred to a follow-up is not done.

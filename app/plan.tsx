@@ -1,9 +1,9 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { ResolvedLocation } from '../src/data/location';
-import { buildKit, type Hazard, type Household } from '../src/kit/rules';
+import { buildKit, type Hazard, type Household, type KitItem } from '../src/kit/rules';
 import { load, loadResult, save, saveResult, type Saved } from '../src/storage';
 import { lookup } from '../src/supabase';
 
@@ -28,6 +28,7 @@ export default function Plan() {
   const [checked, setChecked] = useState<string[]>([]);
   const [area, setArea] = useState<Saved<Area> | null>(null);
   const [areaFailed, setAreaFailed] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
 
   // Render from what's saved first, then refresh the area in the background.
   useEffect(() => {
@@ -59,7 +60,9 @@ export default function Plan() {
     };
   }, [router]);
 
-  const kit = useMemo(() => (household ? buildKit(household, area?.data.hazards ?? []) : []), [household, area]);
+  const all = useMemo(() => (household ? buildKit(household, area?.data.hazards ?? []) : []), [household, area]);
+  const kit = all.filter((i) => !i.tip);
+  const tips = all.filter((i) => i.tip);
   // Checkmarks are kept by id; items the household no longer needs just don't count.
   const done = kit.filter((i) => checked.includes(i.id)).length;
 
@@ -82,7 +85,7 @@ export default function Plan() {
     <ScrollView contentContainerStyle={styles.container}>
       <Text accessibilityRole="header" style={styles.title}>Your emergency plan</Text>
       <Text style={styles.note}>{place.label}</Text>
-      <Pressable accessibilityRole="link" onPress={() => router.push('/setup')}>
+      <Pressable accessibilityRole="link" onPress={() => router.replace('/setup')}>
         <Text style={styles.link}>Edit household</Text>
       </Pressable>
 
@@ -103,8 +106,8 @@ export default function Plan() {
       {kit.map((item) => {
         const on = checked.includes(item.id);
         return (
+          <Info key={item.id} item={item} open={open} setOpen={setOpen}>
           <Pressable
-            key={item.id}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: on }}
             accessibilityLabel={item.qty ? `${item.label}, ${item.qty}` : item.label}
@@ -122,6 +125,7 @@ export default function Plan() {
               </Text>
             </View>
           </Pressable>
+          </Info>
         );
       })}
       <Text style={styles.source}>
@@ -132,12 +136,61 @@ export default function Plan() {
             : "Checking your area's hazards…"}
       </Text>
 
+      {tips.length ? (
+        <>
+          <Text accessibilityRole="header" style={styles.heading}>Extra advice</Text>
+          {tips.map((item) => (
+            <Info key={item.id} item={item} open={open} setOpen={setOpen}>
+              <View style={styles.itemText}>
+                <Text style={styles.label}>{item.label}</Text>
+                <Text style={styles.reason}>
+                  {item.reason} <Text style={styles.source}>Source: {item.source}</Text>
+                </Text>
+              </View>
+            </Info>
+          ))}
+        </>
+      ) : null}
+
       {/* T5 <WaterSafety />, then T5 <Hazards />, then T7 <NearbyHelp /> go here. */}
     </ScrollView>
   );
 }
 
+// A row with an optional info button that shows the item's longer details underneath.
+function Info({ item, open, setOpen, children }: {
+  item: KitItem;
+  open: string | null;
+  setOpen: (id: string | null) => void;
+  children: ReactNode;
+}) {
+  const shown = open === item.id;
+  return (
+    <View>
+      <View style={styles.row}>
+        <View style={styles.itemText}>{children}</View>
+        {item.details ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`More about ${item.label}`}
+            aria-expanded={shown}
+            onPress={() => setOpen(shown ? null : item.id)}
+            style={styles.info}
+          >
+            <Text style={styles.infoText}>{shown ? '×' : 'i'}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {shown ? <Text style={styles.details}>{item.details}</Text> : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  info: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  infoText: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: '#0b5cad', color: '#0b5cad', fontWeight: '700', textAlign: 'center', lineHeight: 22 },
+  details: { fontSize: 14, color: '#333', backgroundColor: '#f2f5f9', borderRadius: 8, padding: 12, marginLeft: 38 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   container: { padding: 24, gap: 12, width: '100%', maxWidth: 560, alignSelf: 'center' },
   title: { fontSize: 28, fontWeight: '700' },

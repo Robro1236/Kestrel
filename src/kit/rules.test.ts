@@ -72,8 +72,8 @@ test('medication and pet items', () => {
 test('each hazard trigger', () => {
   const cases: Record<string, string[]> = {
     earthquake: ['eq-shoes', 'eq-strap', 'eq-gas'],
-    inland_flood: ['flood-bag', 'flood-boots', 'flood-route', 'flood-insurance'],
-    coastal_flood: ['flood-bag', 'flood-boots', 'flood-route', 'flood-insurance'],
+    inland_flood: ['flood-boots', 'flood-route', 'flood-insurance'],
+    coastal_flood: ['flood-boots', 'flood-route', 'flood-insurance'],
     heat_wave: ['heat-fan', 'heat-towels', 'heat-checkin'],
     wildfire: ['fire-n95', 'fire-gobag', 'fire-purifier'],
     hurricane: ['hurricane-shutters', 'hurricane-batteries', 'hurricane-fuel'],
@@ -101,4 +101,28 @@ test('rating threshold', () => {
   for (const rating of ['Relatively Low', 'Very Low', 'No Rating', 'Not Applicable', 'Insufficient Data', '']) {
     expect(ids(base, [{ type: 'earthquake', rating }])).toEqual(BASE_IDS);
   }
+});
+
+// protects=infants never get masks or helmets, and pets never count as people
+// fails_when=an infant or a pet raises the dust mask, N95 or helmet count
+// no_claim=does not check that a car seat is the right advice for every infant
+test('masks and helmets count everyone but infants and pets', () => {
+  const h = { ...base, infants: 1, dogs: 2, cats: 1 };
+  const hz = [rm('wildfire'), rm('tornado')];
+  expect(qty(h, hz, 'dust-masks')).toBe('2 masks');
+  expect(qty(h, hz, 'fire-n95')).toBe('4 masks');
+  expect(qty(h, hz, 'tornado-helmet')).toBe('2, one per person');
+  expect(qty({ ...base, adults: 0, infants: 1 }, hz, 'tornado-helmet')).toBeUndefined();
+});
+
+// protects=extras are advice, not checklist items: no amount, and every essential has none of them
+// fails_when=a tip gets a per-person amount, or an essential like water is marked as a tip
+// no_claim=does not judge which items are essential
+test('tips have no amount and essentials stay on the checklist', () => {
+  const kit = buildKit({ ...base, children: 2, dogs: 1 }, [rm('tornado'), rm('winter_weather')]);
+  const tips = kit.filter((i) => i.tip);
+  expect(tips.map((i) => i.id)).toEqual(['comfort', 'child-id', 'pet-photo', 'tornado-room', 'winter-warmers', 'winter-salt']);
+  expect(tips.filter((i) => i.qty)).toEqual([]);
+  expect(kit.filter((i) => BASE_IDS.includes(i.id) && i.tip)).toEqual([]);
+  expect(kit.find((i) => i.id === 'water')?.details).toBeTruthy();
 });

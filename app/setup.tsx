@@ -80,7 +80,8 @@ export default function Setup() {
         ['household', JSON.stringify(household)],
         ['location', JSON.stringify(place)],
       ]).catch(() => {});
-      router.push('/plan');
+      // replace, not push: Edit household -> Build must not stack a second plan screen.
+      router.replace('/plan');
     } catch {
       setMessage("Couldn't reach the location service. Check your connection and try again.");
     } finally {

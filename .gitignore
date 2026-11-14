@@ -1,0 +1,7 @@
+# graphify knowledge-graph output (machine-specific paths, cache, rebuildable)
+graphify-out/
+
+# Claude Code local config (agents, skills, MCP servers)
+.claude/
+.mcp.json
+CLAUDE.local.md

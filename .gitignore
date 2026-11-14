@@ -1,7 +1,11 @@
 # graphify knowledge-graph output (machine-specific paths, cache, rebuildable)
 graphify-out/
 
-# Claude Code local config (agents, skills, MCP servers)
-.claude/
-.mcp.json
+# Secrets (Supabase keys etc.)
+.env
+.env.*
+!.env.example
+
+# Claude Code personal files (shared config in .claude/ and .mcp.json is committed)
+.claude/settings.local.json
 CLAUDE.local.md

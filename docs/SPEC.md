@@ -64,7 +64,7 @@ Why the split: Open-Meteo and NWS are fast and allow browser calls. Overpass, Ph
 
 | Route | Content |
 |---|---|
-| `app/index.tsx` | Title, one-line pitch, "Households prepared: N", **Start** button. If a saved plan exists: **View my plan**. |
+| `app/index.tsx` | Title, one-line pitch, **Start** button. If a saved plan exists: **View my plan**. "Households prepared: N" is added in T8 (last step). |
 | `app/setup.tsx` | One scrolling form. **Location:** "Use my location" button or a text box (US ZIP or city). **Household:** adults (18–64), seniors (65+), children (2–17), infants (<2), dogs, cats, "someone takes daily medication" (yes/no), "someone uses a mobility aid or powered medical device" (yes/no). **Build my kit** button. |
 | `app/plan.tsx` | Sections in this order: Warnings banner (only if active) → Air quality banner (only if US AQI > 100) → Supply kit (checklist + progress) → Water safety → Local hazards → Nearby help. "Edit household" link. Each section shows its source and date in small text. |
 
@@ -168,7 +168,7 @@ create table public.lookup_cache (
 alter table public.lookup_cache enable row level security;  -- no policies: service role only
 ```
 
-The app inserts one `kit_plans` row the **first** time a device builds a kit (an AsyncStorage flag prevents repeats).
+The app inserts one `kit_plans` row the **first** time a device builds a kit (an AsyncStorage flag prevents repeats). **Deferred to T8:** the table, RPC and `recordPlanOnce` in `src/storage.ts` exist, but the home screen does not show the count and the plan screen does not insert rows until T8 turns it on.
 
 `supabase/functions/lookup/index.ts`: `GET /lookup?kind=area|places&lat=..&lon=..`
 
@@ -201,10 +201,10 @@ Order rationale: T0 first because every data section depends on which endpoints 
 | 2 | T2 | `buildKit` + tests; setup screen; location resolution | 4h / 1h | `src/kit/*`, `app/setup.tsx`, `src/data/location.ts` |
 | 2 | T3 | Supabase project, migration, `lookup` skeleton + `kind=area` | 3h / 1h | `supabase/migrations/*`, `supabase/functions/lookup/index.ts`, `.../area.ts` |
 | 2 | T6 | Vercel project, `vercel.json`, env vars, README "How to run" for judges | 1.5h / 30m | `vercel.json`, `README.md` |
-| 3 | T4 | Plan screen shell: sections, checklist, progress, storage, counter | 3h / 1h | `app/plan.tsx`, `app/index.tsx`, `src/storage.ts` |
+| 3 | T4 | Plan screen shell: sections, checklist, progress, storage (counter deferred to T8) | 3h / 1h | `app/plan.tsx`, `app/index.tsx`, `src/storage.ts` |
 | 3 | T5 | NWS warnings, hazards section, `waterGuidance` + tests | 3h / 1h | `src/data/nws.ts`, `src/water/*`, `src/components/Hazards.tsx`, `Warnings.tsx`, `WaterSafety.tsx` |
 | 3 | T7 | `lookup?kind=places` (Overpass + shelters), Nearby help section, air quality banner + tests | 4h / 1.5h | `supabase/functions/lookup/places.ts`, `src/data/airQuality.ts`, `src/components/NearbyHelp.tsx`, `AirBanner.tsx` |
-| 4 | T8 | Integrate, `/qa` on the Vercel link, test on real phones, fix, submit | 3h / 1h | any |
+| 4 | T8 | Integrate, turn on the "Households prepared" counter (home `prepared_count()` + `recordPlanOnce` on the plan screen), `/qa` on the Vercel link, test on real phones, fix, submit | 3h / 1h | any |
 
 Total: ~25h human / ~8h with Claude Code. If T7 slips, the plan screen hides Nearby help and the air banner, so nothing else waits on it.
 
@@ -229,7 +229,7 @@ Total: ~25h human / ~8h with Claude Code. If T7 slips, the plan screen hides Nea
 9. Denying location shows the text box and no error screen.
 10. The `lookup` function returns HTTP 400 for `lat=200`, and returns a cached row (`stale: true`) when its upstream is unreachable.
 11. `lookup_cache` stores keys with at most 2 decimal places; no table stores exact coordinates.
-12. The home counter increases by exactly 1 the first time a device builds a kit, and not again on later builds.
+12. (T8) The home counter increases by exactly 1 the first time a device builds a kit, and not again on later builds.
 13. Every place, hazard, warning and water fact on screen shows a source name and a date.
 14. Each test in the Testing Plan states its card: `protects=<observable it protects>; fails_when=<wrong result it rejects>; no_claim=<what green does not prove>`.
 15. No secrets are committed: `git grep -n "service_role"` finds nothing outside docs.

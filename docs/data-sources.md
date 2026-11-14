@@ -15,7 +15,7 @@ The findings below were folded into `docs/SPEC.md` on 2026-11-14. Where the two 
 | NWS alerts | warnings | works | yes | 0.4 s | none |
 | FCC Area API | county FIPS | works | yes | 1.0 s | none |
 | FEMA NRI (ArcGIS) | hazard ratings | works | yes | 0.2 s | **yes: no riverine-flood field** |
-| Nominatim reverse | country outside US | works | yes | 0.7 s | none |
+| Nominatim reverse | country outside US | works from a laptop, **fails from Supabase** | yes | 0.7 s | **yes: replaced by Photon in T3** |
 | Overpass | nearby places | works, **slow** | yes | 25–34 s | **yes: timeout and caching matter** |
 | FEMA open shelters | shelters | works | yes | 1.2 s | **yes: some rows have no coordinates** |
 | World Bank API (JMP data) | `jmp.json` | works | n/a (build time) | – | **yes: 66 countries missing** |
@@ -115,6 +115,11 @@ An unknown field name in `outFields` fails the whole query with HTTP 200 and `{"
 
 ### Nominatim reverse
 `GET https://nominatim.openstreetmap.org/reverse?lat=-1.29&lon=36.82&format=jsonv2&zoom=8` → `address.country_code` is lower case (`"ke"`).
+
+**Not used.** On 2026-11-14 the deployed `lookup` function got an error from Nominatim on every call (502 in under 3 s for Nairobi and Paris), while the same request worked from a laptop. The exact status code was not captured.
+
+### Photon reverse (replaces Nominatim)
+`GET https://photon.komoot.io/reverse?lat=-1.29&lon=36.82&limit=1&radius=100` → `features[0].properties.countrycode` (`"KE"`, upper case). `features` is `[]` when nothing is within the radius (open ocean), which gives `country_code: null`. No key. Confirmed from the deployed function on 2026-11-14 (Nairobi → `KE`, Paris → `FR`).
 Usage policy: max 1 request per second and an identifying `User-Agent`. Call it only from the Edge Function, cached.
 
 ### Overpass

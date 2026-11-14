@@ -1,10 +1,10 @@
-# Ready Kit: spec
+# Kestrel: spec
 
-Working name: **Ready Kit**. Hackathon theme: "Create Lasting Impact". Deadline: end of day 3. This spec covers days 2 and 3.
+Working name: **Kestrel**. Hackathon theme: "Create Lasting Impact". Deadline: end of day 3. This spec covers days 2 and 3.
 
 ## Context
 
-Most households are not ready for an emergency. Generic tools (FEMA app, Red Cross apps, Ready.gov "Make a Plan") give one-size checklists with no quantities, no local hazards and no water-safety guidance. Ready Kit takes a location and a few household answers and returns, in under a minute:
+Most households are not ready for an emergency. Generic tools (FEMA app, Red Cross apps, Ready.gov "Make a Plan") give one-size checklists with no quantities, no local hazards and no water-safety guidance. Kestrel takes a location and a few household answers and returns, in under a minute:
 
 1. a **supply kit** sized to the household and the area's hazards,
 2. **water safety guidance** for the area (Rotary names clean water as a focus area),
@@ -50,7 +50,7 @@ Phone/browser (Expo app, web + native from one codebase)
   └─ AsyncStorage (localStorage on web): household, location, checkmarks, last results
 ```
 
-Why the split: Open-Meteo and NWS are fast and allow browser calls. Overpass, Nominatim and FEMA have strict usage limits, so the Edge Function caches them per ~1 km grid cell. Coordinates are rounded to 2 decimals before caching, so no exact location is stored.
+Why the split: Open-Meteo and NWS are fast and allow browser calls. Overpass, Photon and FEMA have strict usage limits, so the Edge Function caches them per ~1 km grid cell. Coordinates are rounded to 2 decimals before caching, so no exact location is stored.
 
 ### Stack and dependencies
 
@@ -177,7 +177,7 @@ The app inserts one `kit_plans` row the **first** time a device builds a kit (an
 - Reject lat outside [-90, 90] or lon outside [-180, 180] with HTTP 400.
 - Response `area`: `{ "country_code": "US", "in_us": true, "county": "San Joaquin County", "state": "CA", "county_fips": "06077", "hazards": [{ "type": "inland_flood", "rating": "Relatively High" }], "fetched_at": "...", "stale": false }`
 - Response `places`: `{ "places": [{ "category": "hospital", "name": "...", "lat": 0, "lon": 0, "distance_km": 3.2 }], "shelters": [], "fetched_at": "...", "stale": false }`
-- Upstreams (all confirmed in Task 0, see `docs/data-sources.md`): FCC Area API for county FIPS; FEMA NRI ArcGIS feature service (it returns HTTP 200 with an `error` body on a bad query, so check the body); Nominatim reverse for country outside the US (with an identifying `User-Agent`); Overpass `https://overpass-api.de/api/interpreter` with a 45 s fetch timeout; FEMA open shelters.
+- Upstreams (all confirmed in Task 0, see `docs/data-sources.md`): FCC Area API for county FIPS; FEMA NRI ArcGIS feature service (it returns HTTP 200 with an `error` body on a bad query, so check the body); Photon reverse (`photon.komoot.io`, OpenStreetMap data) for country outside the US, replacing Nominatim, which failed every call from the deployed function (T3); Overpass `https://overpass-api.de/api/interpreter` with a 45 s fetch timeout; FEMA open shelters.
 
 ### Offline and persistence (`src/storage.ts`)
 

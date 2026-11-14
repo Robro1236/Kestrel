@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Ready Kit",
-    "slug": "ready-kit",
+    "name": "Kestrel",
+    "slug": "kestrel",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,7 +23,7 @@
       "bundler": "metro",
       "output": "single"
     },
-    "scheme": "readykit",
+    "scheme": "kestrel",
     "plugins": [
       "expo-router"
     ]

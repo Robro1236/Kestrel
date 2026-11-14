@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <View style={styles.container}>
       <Text accessibilityRole="header" style={styles.title}>
-        Ready Kit
+        Kestrel
       </Text>
       <Text style={styles.pitch}>An emergency kit sized to your household and your area.</Text>
     </View>

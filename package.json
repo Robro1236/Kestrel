@@ -1,5 +1,5 @@
 {
-  "name": "ready-kit",
+  "name": "kestrel",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
@@ -33,7 +33,8 @@
     "web": "expo start --web",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "build:web": "expo export -p web"
+    "build:web": "expo export -p web",
+    "smoke": "node --env-file=.env scripts/smoke-lookup.mjs"
   },
   "private": true,
   "jest": {

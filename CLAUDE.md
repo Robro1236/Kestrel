@@ -12,6 +12,9 @@ A 3-day HackAIthon project for a Rotary Club hackathon. The theme is likely sust
 - GitHub repo link
 - A **publicly accessible app link** (the web build)
 
+## Quality bar
+Read CONSTRAINTS.md before writing code. Do not weaken it to make a change pass. Run `npm run check:task` before calling a task done.
+
 ## Working style
 - Usage matters: keep token use low. Prefer the core gstack skills (`/office-hours` or `/spec`, `/autoplan`, `/review`, `/qa`, `/verify`, `/ship`) and don't turn heavy skills back on without asking.
 - `graphify-out/` is gitignored. Each of us builds our own graph with `/graphify`.

@@ -34,7 +34,11 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "build:web": "expo export -p web",
-    "smoke": "node --env-file=.env scripts/smoke-lookup.mjs"
+    "smoke": "node --env-file=.env scripts/smoke-lookup.mjs",
+    "load": "node --env-file=.env scripts/load-lookup.mjs",
+    "check:fast": "tsc --noEmit && node scripts/floor-guard.mjs",
+    "check:task": "npm run check:fast && jest",
+    "check:full": "npm run check:task && npm audit --omit=dev --audit-level=high && expo export -p web && node scripts/bundle-size.mjs dist 450"
   },
   "private": true,
   "jest": {

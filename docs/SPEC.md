@@ -20,6 +20,8 @@ Coverage: **US-first.** Hazards and warnings are US-only. Kit, water baseline, a
 
 Greenfield. The repo holds only `README.md`, `CLAUDE.md`, `CLAUDE_SETUP.md`, `.mcp.json`, `.gitignore`, `.gitattributes`. No `package.json`, no app code, no Supabase project, no hosting.
 
+Update 2026-11-14: T0 and T1 are done. The Expo SDK 58 scaffold, `src/data/jmp.json` and `docs/data-sources.md` exist. The spike's corrections are folded into this spec.
+
 ## Definition of Done (the judge test)
 
 A judge opens the public Vercel link on a phone or computer and, **in under 60 seconds with no account**:
@@ -29,7 +31,7 @@ A judge opens the public Vercel link on a phone or computer and, **in under 60 s
 3. sees a supply list with **computed quantities** they can check off, with a progress bar,
 4. sees a water safety section with gallons needed and purification steps,
 5. sees active NWS warnings for that place (or "No active warnings"),
-6. sees nearby hospitals and food banks with source and fetch date,
+6. sees nearby hospitals and pharmacies with source and fetch date (food banks and police only where OpenStreetMap has them; 95391 has none within 10 km),
 7. reloads the page, or goes offline and reloads, and still sees their plan and checkmarks.
 
 ## Proposed Change
@@ -89,7 +91,7 @@ Kit length is fixed at **3 days** (Ready.gov minimum). `people = adults + senior
 | medication = yes | 7-day supply of medications · List of medications and doses |
 | dogs + cats > 0 | Pet food (3 days) · Leash or carrier · Pet medications and vet records · Recent pet photo |
 | hazard earthquake ≥ Relatively Moderate | Sturdy shoes and gloves by each bed · Strap heavy furniture and water heater · Know your gas shutoff |
-| hazard riverine/coastal flood ≥ RM | Waterproof document bag · Rubber boots · Know your evacuation route (link) · Flood insurance check |
+| hazard inland/coastal flood ≥ RM | Waterproof document bag · Rubber boots · Know your evacuation route (link) · Flood insurance check |
 | hazard heat wave ≥ RM | Extra water: `+people × 1` gal · Battery fan · Cooling towels · Plan to check on seniors |
 | hazard wildfire ≥ RM | N95 masks: `people × 2` · Go-bag by the door · Air purifier or DIY box-fan filter |
 | hazard hurricane ≥ RM | Plywood or shutters plan · Extra batteries · Fuel up the car |
@@ -97,7 +99,7 @@ Kit length is fixed at **3 days** (Ready.gov minimum). `people = adults + senior
 | hazard winter weather / cold wave / ice storm ≥ RM | Blankets: `people` · Hand warmers · Rock salt or sand |
 | hazard drought ≥ RM | (no items; covered by the water section) |
 
-"≥ RM" means FEMA NRI rating `Relatively Moderate`, `Relatively High` or `Very High`.
+"≥ RM" means FEMA NRI rating `Relatively Moderate`, `Relatively High` or `Very High`. Every other value (`Relatively Low`, `Very Low`, `No Rating`, `Not Applicable`, `Insufficient Data`) counts as below. The NRI has no riverine-flood rating; flood hazards are `inland_flood` (`IFLD_RISKR`) and `coastal_flood` (`CFLD_RISKR`). Field names for every hazard are in `docs/data-sources.md`.
 
 Checkmarks are stored per item `id`. Progress = checked / total. When the household changes, existing `id` checkmarks are kept and removed items drop out.
 
@@ -106,11 +108,11 @@ Checkmarks are stored per item `id`. Progress = checked / total. When the househ
 `waterGuidance({ gallons, countryCode, jmpPct, hazards, activeAlerts, elevationM }): WaterGuidance`
 
 - **Gallons needed:** taken from the kit.
-- **Baseline label:** if `jmpPct < 90` or the country is missing from the table: "Tap water here may not be safe. Boil or filter before drinking." Source: WHO/UNICEF JMP, with the data year. `jmpPct` comes from a static `src/data/jmp.json` (ISO2 → % population using safely managed drinking water), generated once in Task 0.
+- **Baseline label:** if `jmpPct < 90`: "Tap water here may not be safe. Boil or filter before drinking." Source: WHO/UNICEF JMP, with the data year. If the country is missing from the table (66 countries are, including Australia, China and Kenya): "We don't have tap water data for this country. If you're unsure, boil or filter before drinking." `jmpPct` comes from the static `src/data/jmp.json`, shaped `{ countries: { "US": { "pct": 97.6, "year": 2024 } } }` (% population using safely managed drinking water), generated in Task 0.
 - **Disaster warning:** if flood, hurricane or earthquake is ≥ RM: "After a flood, hurricane or earthquake, treat tap water as unsafe until officials say it's clear."
 - **Active alert:** if an NWS alert's `event` contains `Flood` or `Hurricane`, the disaster warning moves to the top of the section, highlighted.
 - **Boil:** rolling boil 1 minute; **3 minutes if `elevationM > 1981`** (6,500 ft). Source: CDC.
-- **Bleach:** for clear water, 1/8 teaspoon (8 drops) of unscented 6% household bleach per gallon, wait 30 minutes. Show the per-gallon amount and the total for the kit's gallons, in teaspoons (8 drops = 1/8 tsp). Source: CDC. **Task 0 confirms the exact CDC wording and numbers before this ships.**
+- **Bleach:** for clear water, 8 drops (a little less than 1/8 teaspoon) of unscented household bleach (5% to 9% sodium hypochlorite) per gallon; stir and wait at least 30 minutes. "If the water is cloudy, colored or very cold, use double." "Follow the bleach label's own instructions if it has them." Show the per-gallon amount and the total for the kit's gallons: compute in drops (8 per gallon) and convert to teaspoons at CDC's 5-gallon figure (40 drops = 1/2 tsp), so 12 gallons = 96 drops ≈ 1 1/4 tsp. Source: CDC, "How to Make Water Safe in an Emergency" (page dated Sept. 19, 2024, confirmed 2026-11-14).
 
 ### Air quality (`src/data/airQuality.ts` + `src/components/AirBanner.tsx`)
 
@@ -132,8 +134,9 @@ List hazards rated ≥ RM with their FEMA NRI rating, plus the text "Source: FEM
 
 ### Nearby help (from `lookup?kind=places`, plus static links)
 
-- **From OpenStreetMap via Overpass**, 10 km radius, the 3 nearest of each: hospital (`amenity=hospital`), fire station, police, pharmacy, food bank (`social_facility=food_bank`). Show name, distance, and a "Directions" link (`https://www.google.com/maps/dir/?api=1&destination={lat},{lon}`). Footer: "Data © OpenStreetMap contributors, fetched {date}."
-- **Shelters:** FEMA open-shelter data if Task 0 finds a working endpoint, labelled "Open during active disasters only." Always also show a link to the Red Cross "Find an open shelter" page.
+- **From OpenStreetMap via Overpass**, 10 km radius, the 3 nearest of each: hospital (`amenity=hospital`), fire station, police, pharmacy, food bank (`social_facility=food_bank`). Show name, distance, and a "Directions" link (`https://www.google.com/maps/dir/?api=1&destination={lat},{lon}`). Footer: "Data © OpenStreetMap contributors, fetched {date}." A category with no results shows "None found within 10 km." A place with no `name` tag shows its category name (e.g. "Pharmacy").
+- **Overpass is slow (25–34 s uncached).** This section loads on its own with a "Finding nearby help…" state; the rest of the plan never waits for it. Warm the cache for the demo ZIP before judging.
+- **Shelters:** FEMA open-shelter data (endpoint in `docs/data-sources.md`), labelled "Open during active disasters only." Rows with no latitude/longitude are skipped. Always also show a link to the Red Cross "Find an open shelter" page.
 - **Official links (US), each with a "link checked {date}" constant:**
   - Cooling centers and water distribution: "Call or text **2-1-1**" (United Way 211) and "Check {county name} emergency services."
   - Evacuation: Ready.gov evacuation page and "Check {county name} emergency services."
@@ -172,9 +175,9 @@ The app inserts one `kit_plans` row the **first** time a device builds a kit (an
 - Round lat/lon to 2 decimals. Look up `lookup_cache`. Fresh if `area` is under 30 days old and `places` under 7 days. Otherwise fetch upstream, upsert, return.
 - If upstream fails and a stale cache row exists, return it with `"stale": true`. Otherwise return HTTP 502 with `{ "error": "upstream_unavailable" }`.
 - Reject lat outside [-90, 90] or lon outside [-180, 180] with HTTP 400.
-- Response `area`: `{ "country_code": "US", "in_us": true, "county": "San Joaquin County", "state": "CA", "county_fips": "06077", "hazards": [{ "type": "riverine_flood", "rating": "Relatively High" }], "fetched_at": "...", "stale": false }`
+- Response `area`: `{ "country_code": "US", "in_us": true, "county": "San Joaquin County", "state": "CA", "county_fips": "06077", "hazards": [{ "type": "inland_flood", "rating": "Relatively High" }], "fetched_at": "...", "stale": false }`
 - Response `places`: `{ "places": [{ "category": "hospital", "name": "...", "lat": 0, "lon": 0, "distance_km": 3.2 }], "shelters": [], "fetched_at": "...", "stale": false }`
-- Upstreams (all confirmed or replaced in Task 0): FCC Area API for county FIPS; FEMA NRI (ArcGIS service, or a bundled county JSON if there's no queryable service); Nominatim reverse for country outside the US (with an identifying `User-Agent`); Overpass `https://overpass-api.de/api/interpreter`.
+- Upstreams (all confirmed in Task 0, see `docs/data-sources.md`): FCC Area API for county FIPS; FEMA NRI ArcGIS feature service (it returns HTTP 200 with an `error` body on a bad query, so check the body); Nominatim reverse for country outside the US (with an identifying `User-Agent`); Overpass `https://overpass-api.de/api/interpreter` with a 45 s fetch timeout; FEMA open shelters.
 
 ### Offline and persistence (`src/storage.ts`)
 
@@ -220,7 +223,7 @@ Total: ~25h human / ~8h with Claude Code. If T7 slips, the plan screen hides Nea
 3. `buildKit` returns the infant, pet and medication items exactly when those inputs are > 0 / yes, and no others.
 4. With US AQI 100 the air banner is hidden; with 101 it shows "Unhealthy for sensitive groups".
 5. With `elevationM = 2000` the boil step says 3 minutes; with `1981` it says 1 minute.
-6. With a country whose `jmpPct` is < 90, or missing, the "may not be safe" label shows; with `US` it doesn't.
+6. With a country whose `jmpPct` is < 90 the "may not be safe" label shows; with a country missing from the table the "we don't have tap water data" label shows; with `US` neither shows.
 7. A non-US city (e.g. "Nairobi") shows the kit, water section and nearby places, and the hazard and warning sections show their "only in the US" text instead of an error.
 8. With network disabled after one successful load, reloading shows the saved plan and checkmarks, each source labelled with its saved date.
 9. Denying location shows the text box and no error screen.

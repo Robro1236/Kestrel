@@ -1,0 +1,11 @@
+{
+  "$schema": "https://github.com/garrytan/gstack/docs/pregate.md#pregate-v1",
+  "runner": "npx jest {files}",
+  "dependencies": {
+    ".env.example": [],
+    "app.json": [],
+    "package.json": [],
+    "package-lock.json": [],
+    "tsconfig.json": []
+  }
+}

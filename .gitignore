@@ -9,3 +9,18 @@ graphify-out/
 # Claude Code personal files (shared config in .claude/ and .mcp.json is committed)
 .claude/settings.local.json
 CLAUDE.local.md
+
+# Expo / Node
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.tsbuildinfo
+/ios
+/android
+.vercel
+# gstack run records (the policy file .gstack/pregate.json is committed)
+.gstack/tmp/
+.claude/launch.json
+docs/college-app-writeup.md

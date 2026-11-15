@@ -46,3 +46,53 @@ test('FamilyPlanLink: opens the family plan card', async () => {
   await fireEvent.press(screen.getByRole('link', { name: 'Family plan card' }));
   expect(mockRouter.push).toHaveBeenCalledWith('/family');
 });
+
+// protects=the plan card fits the household: one pet photo slot per dog and cat, no Pets section without pets, and photos print under Pets; fails_when=slots don't match the household, a pet-free household gets a Pets section, or a non-JPEG URL reaches the print page; no_claim=the photo picker or resizer works on a device
+test('family: pet photos follow the household and print under Pets', async () => {
+  const { petSlots } = require('../app/family');
+  expect(petSlots({ dogs: 2, cats: 1 })).toEqual(['Dog', 'Dog 2', 'Cat']);
+  expect(petSlots(null)).toEqual([]);
+
+  // No household saved yet: the general card, pets included.
+  await render(<Family />);
+  expect(await screen.findByLabelText('Add a photo of pet')).toBeTruthy();
+  await screen.unmount();
+
+  // A household without pets: no pet fields, just a way to add pets.
+  await AsyncStorage.setItem('household', JSON.stringify({ adults: 2, seniors: 0, children: 0, infants: 0, dogs: 0, cats: 0, medication: false, mobility: false }));
+  await render(<Family />);
+  expect(await screen.findByText('Add pets')).toBeTruthy();
+  expect(screen.queryByLabelText('Pet details')).toBeNull();
+  await screen.unmount();
+
+  await AsyncStorage.setItem('household', JSON.stringify({ dogs: 1, cats: 1 }));
+  await render(<Family />);
+  expect(await screen.findByLabelText('Add a photo of dog')).toBeTruthy();
+  expect(screen.getByLabelText('Add a photo of cat')).toBeTruthy();
+
+  const jpeg = 'data:image/jpeg;base64,AAAA';
+  const html = cardHtml(EMPTY_PLAN, { photos: [jpeg, 'javascript:alert(1)'] });
+  expect(html).toContain(`<dt>Pet details</dt><dd></dd><dd class="photos"><img src="${jpeg}" alt=""></dd>`);
+  expect(html).not.toContain('javascript:');
+  expect(cardHtml(EMPTY_PLAN, { pets: false })).not.toContain('<dt>Pet details</dt>');
+});
+
+// protects=the card's header, section titles and hints follow the household; fails_when=a household without kids still asks about schools, a medicine or mobility need isn't prompted, or the summary miscounts; no_claim=the hints are complete medical advice
+test('family: card is tailored to the household', async () => {
+  const { householdSummary, tailor } = require('../app/family');
+  const h = { adults: 2, seniors: 0, children: 0, infants: 1, dogs: 1, cats: 0, medication: true, mobility: false };
+  expect(householdSummary(h)).toBe('2 adults, 1 infant, 1 dog');
+  const t = tailor(h);
+  expect(t.titles['School and work']).toBeUndefined();
+  expect(t.hints.contacts).toContain('each of the 3 people');
+  expect(t.hints.medical).toContain('daily medicine');
+  expect(t.hints.medical).toContain("baby's formula");
+  expect(t.hints.medical).not.toContain('help to get around');
+  expect(tailor({ ...h, infants: 0 }).titles['School and work']).toBe('Work');
+  expect(tailor(null)).toEqual({ titles: {}, hints: {} });
+
+  await AsyncStorage.setItem('household', JSON.stringify(h));
+  await render(<Family />);
+  expect(await screen.findByText('Made for your household: 2 adults, 1 infant, 1 dog.')).toBeTruthy();
+  expect(screen.getByText('School and work')).toBeTruthy();
+});

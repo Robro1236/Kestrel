@@ -113,7 +113,11 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
   const countyText = county ? `${county} emergency services` : 'your county emergency services';
 
   const cats = Object.keys(CATEGORY_LABELS) as Category[];
-  const byCat = (c: Category) => result?.places.filter((p) => p.category === c) ?? [];
+  const byCat = (c: Category) => {
+    const list = result?.places.filter((p) => p.category === c) ?? [];
+    // OSM tags clinics as hospitals too; ones matched to the official ER list (phone_source 'cms') go first, each group by distance.
+    return c === 'hospital' ? [...list.filter((p) => p.phone_source === 'cms'), ...list.filter((p) => p.phone_source !== 'cms')] : list;
+  };
   const empty = result ? cats.filter((c) => !byCat(c).length) : [];
 
   // One card per topic. Categories with nothing nearby share one card at the bottom.

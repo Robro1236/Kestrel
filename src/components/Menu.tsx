@@ -12,6 +12,7 @@ import { colors, fonts } from '../theme';
 
 const LINKS: [string, Href][] = [
   ['Home', '/plan'],
+  ["What's happening?", '/now'],
   ['Local hazards', '/hazards'],
   ['Water', '/water'],
   ['Nearby help', '/help'],

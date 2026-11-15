@@ -6,6 +6,7 @@ import { AirBanner } from '../src/components/AirBanner';
 import { CountyHelp } from '../src/components/CountyHelp';
 import { FamilyPlanLink } from '../src/components/FamilyPlanLink';
 import { Hazards } from '../src/components/Hazards';
+import { KitReminders } from '../src/components/KitReminders';
 import { NearbyHelp, type PlacesResult } from '../src/components/NearbyHelp';
 import { Warnings } from '../src/components/Warnings';
 import { WaterSafety } from '../src/components/WaterSafety';
@@ -120,6 +121,7 @@ export default function Plan() {
         <Text style={styles.link}>Edit household</Text>
       </Pressable>
       <FamilyPlanLink />
+      <KitReminders inUs={inUs} />
 
       <Warnings lat={place.lat} lon={place.lon} inUs={inUs} warnings={warnings} failed={warningsFailed} />
       <AirBanner lat={place.lat} lon={place.lon} />

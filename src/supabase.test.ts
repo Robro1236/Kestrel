@@ -1,7 +1,7 @@
 const mockInsert = jest.fn();
 const mockRpc = jest.fn();
 const mockFrom = jest.fn(() => ({ insert: mockInsert }));
-jest.mock('./supabaseRest', () => ({ createClient: () => ({ from: mockFrom, rpc: mockRpc }) }));
+jest.mock('@supabase/supabase-js', () => ({ createClient: () => ({ from: mockFrom, rpc: mockRpc }) }));
 const mockStorage = require('@react-native-async-storage/async-storage/jest/async-storage-mock');
 jest.mock('@react-native-async-storage/async-storage', () => mockStorage);
 

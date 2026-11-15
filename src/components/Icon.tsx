@@ -13,6 +13,7 @@ const PATHS = {
   chevronDown: 'M6 9.5l6 6 6-6',
   menu: 'M4 7h16M4 12h16M4 17h16',
   info: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 11v5.5M12 7.6v.1',
+  expand: 'M14 4h6v6M20 4l-6.5 6.5M10 20H4v-6M4 20l6.5-6.5',
   closeCircle: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M9 9l6 6M15 9l-6 6',
 };
 

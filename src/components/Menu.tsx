@@ -6,7 +6,7 @@ import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native
 import { Tap } from './Tap';
 import { Icon } from './Icon';
 import { SAN_JOAQUIN_FIPS } from './CountyHelp';
-import { spring } from '../motion';
+import { popIn, spring } from '../motion';
 import { loadResult } from '../storage';
 import { colors, fonts } from '../theme';
 
@@ -17,6 +17,7 @@ const LINKS: [string, Href][] = [
   ['Nearby help', '/help'],
   ['After a disaster', '/after'],
   ['County alerts', '/county'],
+  ['Disaster history', '/history'],
   ['Family plan card', '/family'],
 ];
 
@@ -33,7 +34,7 @@ export function Menu() {
     if (open) {
       loadResult<{ county_fips?: string }>('area').then((a) => setCounty(a?.data.county_fips === SAN_JOAQUIN_FIPS));
       shown.setValue(0);
-      spring(shown, 1, { bouncy: true });
+      spring(shown, 1, { pop: true });
     }
   }, [open, shown]);
 
@@ -63,16 +64,7 @@ export function Menu() {
         <Pressable accessibilityLabel="Close menu" style={styles.backdrop} onPress={close} />
         <Animated.View
           accessibilityViewIsModal
-          style={[
-            styles.sheet,
-            {
-              opacity: shown.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' }),
-              transform: [
-                { translateY: shown.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) },
-                { scale: shown.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) },
-              ],
-            },
-          ]}
+          style={[styles.sheet, popIn(shown)]}
         >
           <View style={styles.head}>
             <Text style={styles.brand}>Kestrel</Text>

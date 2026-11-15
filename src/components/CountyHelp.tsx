@@ -1,5 +1,7 @@
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { colors, fonts, ui } from '../theme';
+
 // San Joaquin County, CA (Mountain House, Tracy, Stockton). Links from sjready.org, the county OES site.
 export const SAN_JOAQUIN_FIPS = '06077';
 // Visited and confirmed to load on this date.
@@ -14,25 +16,31 @@ const LINKS = {
 // shortcut: only San Joaquin County has local links; add a county here (keyed by FIPS) when the app launches somewhere else.
 export function CountyHelp({ countyFips }: { countyFips?: string | null }) {
   if (countyFips !== SAN_JOAQUIN_FIPS) return null;
+  // One card per task; the county name labels the group.
   return (
-    <View style={styles.section}>
-      <Text accessibilityRole="header" style={styles.heading}>San Joaquin County</Text>
+    <>
+      <Text accessibilityRole="header" style={[ui.eyebrow, styles.label]}>San Joaquin County</Text>
 
-      <Text style={styles.subheading}>Get county emergency alerts</Text>
-      <Text>SJReady sends evacuation orders and warnings by text, call or email. It's free.</Text>
-      <Link url={LINKS.alerts}>Sign up for SJReady alerts</Link>
+      <View style={styles.section}>
+        <Text accessibilityRole="header" style={ui.cardTitle}>Get county emergency alerts</Text>
+        <Text style={styles.text}>SJReady sends evacuation orders and warnings by text, call or email. It's free.</Text>
+        <Link url={LINKS.alerts}>Sign up for SJReady alerts</Link>
+      </View>
 
-      <Text style={styles.subheading}>Know your evacuation zone</Text>
-      <Text>Every address has a zone code, like SJC-001. Look yours up now, write it on your family plan card, and check the map for orders during an emergency.</Text>
-      <Link url={LINKS.zoneMap}>Find your zone on the county map</Link>
-      <Link url={LINKS.knowYourZone}>How zones work</Link>
+      <View style={styles.section}>
+        <Text accessibilityRole="header" style={ui.cardTitle}>Know your evacuation zone</Text>
+        <Text style={styles.text}>Every address has a zone code, like SJC-001. Look yours up now, write it on your family plan card, and check the map for orders during an emergency.</Text>
+        <Link url={LINKS.zoneMap}>Find your zone on the county map</Link>
+        <Link url={LINKS.knowYourZone}>How zones work</Link>
+      </View>
 
-      <Text style={styles.subheading}>Cooling centers</Text>
-      <Text>During heat waves the county lists open cooling centers on SJReady.</Text>
-      <Link url={LINKS.sjReady}>sjready.org</Link>
-
-      <Text style={styles.source}>Source: San Joaquin County Office of Emergency Services. Links checked {COUNTY_LINKS_CHECKED}.</Text>
-    </View>
+      <View style={styles.section}>
+        <Text accessibilityRole="header" style={ui.cardTitle}>Cooling centers</Text>
+        <Text style={styles.text}>During heat waves the county lists open cooling centers on SJReady.</Text>
+        <Link url={LINKS.sjReady}>sjready.org</Link>
+        <Text style={styles.source}>Source: San Joaquin County Office of Emergency Services. Links checked {COUNTY_LINKS_CHECKED}.</Text>
+      </View>
+    </>
   );
 }
 
@@ -45,10 +53,10 @@ function Link({ url, children }: { url: string; children: string }) {
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 6 },
-  heading: { fontSize: 20, fontWeight: '700' },
-  subheading: { fontSize: 16, fontWeight: '600', marginTop: 4 },
+  section: ui.card,
+  label: { paddingHorizontal: 4, marginBottom: -6 },
+  text: { fontFamily: fonts.body, fontSize: 15, color: colors.text },
   linkHit: { minHeight: 44, justifyContent: 'center' },
-  link: { color: '#0b5cad', textDecorationLine: 'underline', fontSize: 15 },
-  source: { fontSize: 12, color: '#555' },
+  link: { fontFamily: fonts.body, color: colors.primary, textDecorationLine: 'underline', fontSize: 15 },
+  source: { fontFamily: fonts.body, fontSize: 12, color: colors.subtle },
 });

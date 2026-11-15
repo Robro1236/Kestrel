@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { colors, fonts, ui } from '../theme';
+
 import { localDay } from '../date';
-import { fetchWaterSystem, type WaterSystemResult } from '../data/waterSystem';
+import { displayName, fetchWaterSystem, type WaterSystemResult } from '../data/waterSystem';
 import { loadResult, saveResult, type Saved } from '../storage';
 
 type Stored = { lat: number; lon: number; result: WaterSystemResult };
 
 // US only. Shows the saved record at once, then one EPA fetch per location; keeps the saved one if that fails.
-export function WaterSystem({ lat, lon, inUs }: { lat: number; lon: number; inUs: boolean }) {
+// onlyIfPoor: the home screen shows this card only for a health-based violation.
+// onMissing: told when there's nothing to show (no system mapped, or no record loaded), so the screen can move the card down.
+export function WaterSystem({ lat, lon, inUs, onlyIfPoor, onMissing }: { lat: number; lon: number; inUs: boolean; onlyIfPoor?: boolean; onMissing?: (missing: boolean) => void }) {
   const [saved, setSaved] = useState<Saved<Stored> | null>(null);
   const [fresh, setFresh] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -36,8 +40,12 @@ export function WaterSystem({ lat, lon, inUs }: { lat: number; lon: number; inUs
     };
   }, [lat, lon, inUs]);
 
-  if (!inUs) return null;
   const r = saved?.data.result;
+  const missing = r === 'none' || (!r && failed);
+  useEffect(() => onMissing?.(missing), [missing, onMissing]);
+
+  if (!inUs) return null;
+  if (onlyIfPoor && !(r && r !== 'none' && r.healthBased)) return null;
   const date = saved ? `${fresh ? 'fetched' : 'saved'} ${localDay(saved.savedAt)}` : '';
 
   return (
@@ -54,7 +62,7 @@ export function WaterSystem({ lat, lon, inUs }: { lat: number; lon: number; inUs
       ) : (
         <>
           <Text style={styles.text}>
-            <Text style={styles.name}>{r.name}</Text>
+            <Text style={styles.name}>{displayName(r.name)}</Text>
             {r.population ? ` serves about ${r.population.toLocaleString()} people.` : '.'}
           </Text>
           {r.quartersWithViolations || r.current ? (
@@ -86,13 +94,13 @@ export function WaterSystem({ lat, lon, inUs }: { lat: number; lon: number; inUs
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 8 },
-  heading: { fontSize: 22, fontWeight: '700', marginTop: 12 },
-  text: { fontSize: 15, color: '#1f1f1f' },
-  name: { fontWeight: '700' },
+  section: ui.card,
+  heading: ui.cardTitle,
+  text: { fontFamily: fonts.body, fontSize: 15, color: colors.text },
+  name: { fontFamily: fonts.bold },
   urgent: { backgroundColor: '#fdecea', borderLeftWidth: 4, borderLeftColor: '#b42318', borderRadius: 8, padding: 12 },
-  urgentText: { fontSize: 15, fontWeight: '600', color: '#7a1a12' },
+  urgentText: { fontFamily: fonts.semi, fontSize: 15, color: '#7a1a12' },
   linkHit: { minHeight: 44, justifyContent: 'center' },
-  link: { color: '#0b5cad', textDecorationLine: 'underline', fontSize: 15 },
-  source: { fontSize: 12, color: '#666' },
+  link: { fontFamily: fonts.body, color: colors.primary, textDecorationLine: 'underline', fontSize: 15 },
+  source: { fontFamily: fonts.body, fontSize: 12, color: colors.subtle },
 });

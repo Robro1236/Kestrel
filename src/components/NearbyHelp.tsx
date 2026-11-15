@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { colors, fonts, ui } from '../theme';
+
 import { fetchJson } from '../data/airQuality';
 import { localDay } from '../date';
 import { distanceKm, type Category, type Place, type Shelter } from '../../supabase/functions/lookup/places';
@@ -77,55 +79,47 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
 
   const countyText = county ? `${county} emergency services` : 'your county emergency services';
 
-  return (
-    <View style={styles.section}>
-      <Text accessibilityRole="header" style={styles.heading}>Nearby help</Text>
+  const cats = Object.keys(CATEGORY_LABELS) as Category[];
+  const byCat = (c: Category) => result?.places.filter((p) => p.category === c) ?? [];
+  const empty = result ? cats.filter((c) => !byCat(c).length) : [];
 
+  // One card per topic. Categories with nothing nearby share one card at the bottom.
+  return (
+    <>
       {state === 'loading' && !result ? (
-        <View style={styles.row}>
+        <View style={[styles.section, styles.row]}>
           <ActivityIndicator />
-          <Text>Finding nearby help…</Text>
+          <Text style={styles.text}>Finding nearby help…</Text>
         </View>
       ) : null}
       {state === 'failed' ? (
-        <Text style={styles.note}>
-          Couldn't load nearby places right now.{result ? ` Showing what we found on ${localDay(result.fetched_at)}.` : ''}
-        </Text>
+        <View style={styles.section}>
+          <Text style={styles.note}>
+            Couldn't load nearby places right now.{result ? ` Showing what we found on ${localDay(result.fetched_at)}.` : ''}
+          </Text>
+        </View>
       ) : null}
 
-      {result ? (
-        <>
-          {(Object.keys(CATEGORY_LABELS) as Category[]).map((c) => {
-            const list = result.places.filter((p) => p.category === c);
-            return (
-              <View key={c} style={styles.group}>
-                <Text style={styles.subheading}>{CATEGORY_LABELS[c]}</Text>
-                {list.length === 0 ? <Text style={styles.note}>None found within 10 km.</Text> : null}
-                {list.map((p, i) => (
-                  <View key={i} style={styles.row}>
-                    <Text style={styles.name}>
-                      {p.name ?? CATEGORY_LABELS[c]} · {p.distance_km} km
-                    </Text>
-                    <Link url={directions(p.lat, p.lon)} label={`Directions to ${p.name ?? CATEGORY_LABELS[c]}`}>
-                      Directions
-                    </Link>
-                  </View>
-                ))}
-              </View>
-            );
-          })}
-          <Text style={styles.source}>
-            Data © OpenStreetMap contributors, fetched {localDay(result.fetched_at)}.
-            {result.source === 'photon' ? ' Found by name search (Photon) while the main source is down, so some places may be missing.' : ''}
-            {result.stale ? ' The live source is down, so this is the last saved copy.' : ''}
-          </Text>
-        </>
-      ) : null}
+      {cats.filter((c) => byCat(c).length).map((c) => (
+        <View key={c} style={styles.section}>
+          <Text accessibilityRole="header" style={ui.cardTitle}>{CATEGORY_LABELS[c]}</Text>
+          {byCat(c).map((p, i) => (
+            <View key={i} style={styles.row}>
+              <Text style={styles.name}>
+                {p.name ?? CATEGORY_LABELS[c]} · {p.distance_km} km
+              </Text>
+              <Link url={directions(p.lat, p.lon)} label={`Directions to ${p.name ?? CATEGORY_LABELS[c]}`}>
+                Directions
+              </Link>
+            </View>
+          ))}
+        </View>
+      ))}
 
       {inUs ? (
         <>
-          <View style={styles.group}>
-            <Text style={styles.subheading}>Shelters</Text>
+          <View style={styles.section}>
+            <Text accessibilityRole="header" style={ui.cardTitle}>Shelters</Text>
             <Text style={styles.note}>Open during active disasters only.</Text>
             {result?.shelters.map((s, i) => (
               <View key={i} style={styles.row}>
@@ -138,35 +132,51 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
                 </Link>
               </View>
             ))}
+            <Link url={LINKS.redCrossShelters}>Red Cross: find an open shelter</Link>
             {result ? (
               <Text style={styles.source}>
                 Source: FEMA open shelters, fetched {localDay(result.fetched_at)}.
                 {result.stale ? ' The live source is down; these shelters may have closed since.' : ''}
               </Text>
             ) : null}
-            <Link url={LINKS.redCrossShelters}>Red Cross: find an open shelter</Link>
           </View>
 
-          <View style={styles.group}>
-            <Text style={styles.subheading}>Cooling centers and water distribution</Text>
-            <Text>
-              Call or text <Text style={styles.bold}>2-1-1</Text> (United Way 211).
+          <View style={styles.section}>
+            <Text accessibilityRole="header" style={ui.cardTitle}>Cooling centers and water</Text>
+            <Text style={styles.text}>
+              Call or text <Text style={styles.bold}>2-1-1</Text> (United Way 211), or check {countyText}.
             </Text>
             <Link url={LINKS.twoOneOne}>211.org</Link>
-            <Text>Check {countyText}.</Text>
           </View>
 
-          <View style={styles.group}>
-            <Text style={styles.subheading}>Evacuation</Text>
+          <View style={styles.section}>
+            <Text accessibilityRole="header" style={ui.cardTitle}>Evacuation</Text>
+            <Text style={styles.text}>Check {countyText}.</Text>
             <Link url={LINKS.evacuation}>Ready.gov: evacuation</Link>
-            <Text>Check {countyText}.</Text>
+            <Text style={styles.source}>Links checked {LINKS_CHECKED}.</Text>
           </View>
-          <Text style={styles.source}>Links checked {LINKS_CHECKED}.</Text>
         </>
       ) : (
-        <Text>Check your local emergency services.</Text>
+        <View style={styles.section}>
+          <Text style={styles.text}>Check your local emergency services.</Text>
+        </View>
       )}
-    </View>
+
+      {empty.length ? (
+        <View style={styles.section}>
+          <Text accessibilityRole="header" style={ui.cardTitle}>Not found within 10 km</Text>
+          <Text style={styles.note}>{empty.map((c) => CATEGORY_LABELS[c]).join(', ')}</Text>
+        </View>
+      ) : null}
+
+      {result ? (
+        <Text style={[styles.source, styles.footnote]}>
+          Places: data © OpenStreetMap contributors, fetched {localDay(result.fetched_at)}.
+          {result.source === 'photon' ? ' Found by name search (Photon) while the main source is down, so some places may be missing.' : ''}
+          {result.stale ? ' The live source is down, so this is the last saved copy.' : ''}
+        </Text>
+      ) : null}
+    </>
   );
 }
 
@@ -180,15 +190,14 @@ function Link({ url, label, children }: { url: string; label?: string; children:
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 8 },
-  heading: { fontSize: 20, fontWeight: '700' },
-  group: { gap: 4, marginTop: 4 },
-  subheading: { fontSize: 16, fontWeight: '600' },
+  section: ui.card,
+  text: { fontFamily: fonts.body, fontSize: 15, color: colors.text },
+  footnote: { paddingHorizontal: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 32, flexWrap: 'wrap' },
-  name: { flex: 1, fontSize: 15 },
-  note: { fontSize: 14, color: '#555' },
+  name: { fontFamily: fonts.body, flex: 1, fontSize: 15 },
+  note: { fontFamily: fonts.body, fontSize: 14, color: colors.subtle },
   linkHit: { minHeight: 44, justifyContent: 'center' },
-  link: { color: '#0b5cad', textDecorationLine: 'underline', fontSize: 15 },
-  bold: { fontWeight: '700' },
-  source: { fontSize: 12, color: '#555' },
+  link: { fontFamily: fonts.body, color: colors.primary, textDecorationLine: 'underline', fontSize: 15 },
+  bold: { fontFamily: fonts.bold },
+  source: { fontFamily: fonts.body, fontSize: 12, color: colors.subtle },
 });

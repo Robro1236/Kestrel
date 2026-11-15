@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { Platform, ScrollView, Share, Text, TextInput, View } from 'react-native';
 
+import { Tap } from '../src/components/Tap';
 import { styles } from '../src/components/familyCardStyles';
 import { load, save } from '../src/storage';
 
@@ -32,6 +33,32 @@ export function planText(p: FamilyPlan): string {
   return ['Our family emergency plan', ...lines].join('\n');
 }
 
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+// Printable page of the card. Empty fields stay as blank lines to fill in by hand. Typed text is escaped.
+export function cardHtml(p: FamilyPlan): string {
+  const rows = FIELDS.map((f) => `<dt>${esc(f.label)}</dt><dd>${esc(p[f.key].trim()).replace(/\n/g, '<br>')}</dd>`).join('');
+  return `<!DOCTYPE html><html><head><title>Family emergency plan</title><style>
+body{font:14px/1.45 system-ui,sans-serif;color:#0f172a;margin:32px}h1{font-size:22px;margin:0 0 16px}
+dt{font-weight:700;margin-top:14px}dd{margin:4px 0 0;min-height:22px;border-bottom:1px solid #94a3b8;padding-bottom:4px}
+p{color:#64748b;font-size:11px;margin-top:24px}</style></head><body><h1>Our family emergency plan</h1><dl>${rows}</dl>
+<p>Source: Ready.gov, Make a Plan. Made with Kestrel.</p></body></html>`;
+}
+
+// The app scrolls inside a fixed-height view, so window.print() would print one clipped screen. Print a plain copy from a hidden frame.
+function printWeb(p: FamilyPlan) {
+  const frame = document.createElement('iframe');
+  frame.style.cssText = 'position:fixed;width:0;height:0;border:0';
+  document.body.appendChild(frame);
+  const win = frame.contentWindow!;
+  win.document.open();
+  win.document.write(cardHtml(p));
+  win.document.close();
+  win.onafterprint = () => frame.remove();
+  win.focus();
+  win.print();
+}
+
 export default function Family() {
   const router = useRouter();
   const [plan, setPlan] = useState<FamilyPlan>(EMPTY);
@@ -47,13 +74,16 @@ export default function Family() {
       return next;
     });
 
-  const print = () => (Platform.OS === 'web' ? window.print() : Share.share({ message: planText(plan) }));
+  const print = () => (Platform.OS === 'web' ? printWeb(plan) : Share.share({ message: planText(plan) }));
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <View style={styles.card}>
       <Text accessibilityRole="header" style={styles.title}>Family plan card</Text>
       <Text style={styles.note}>Fill it in together, then print it or share it so everyone has a copy. It is saved on this device only.</Text>
+      </View>
 
+      <View style={styles.card}>
       {FIELDS.map((f) => (
         <View key={f.key} style={styles.field}>
           <Text style={styles.label} nativeID={`label-${f.key}`}>{f.label}</Text>
@@ -69,13 +99,14 @@ export default function Family() {
           />
         </View>
       ))}
+      </View>
 
-      <Pressable accessibilityRole="button" style={styles.primary} onPress={print}>
+      <Tap accessibilityRole="button" style={styles.primary} onPress={print}>
         <Text style={styles.primaryText}>{Platform.OS === 'web' ? 'Print' : 'Share'}</Text>
-      </Pressable>
-      <Pressable accessibilityRole="link" onPress={() => router.replace('/plan')} style={styles.linkHit}>
+      </Tap>
+      <Tap accessibilityRole="link" onPress={() => router.replace('/plan')} style={styles.linkHit}>
         <Text style={styles.link}>Back to your plan</Text>
-      </Pressable>
+      </Tap>
       <Text style={styles.source}>Source: Ready.gov, Make a Plan.</Text>
     </ScrollView>
   );

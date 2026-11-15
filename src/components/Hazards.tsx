@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Icon } from './Icon';
+import { colors, fonts, ui } from '../theme';
+
 import { HAZARD_ADVICE } from '../kit/hazardAdvice';
 import { localDay } from '../date';
 import { isAtLeastModerate, type Hazard } from '../kit/rules';
@@ -46,10 +49,10 @@ export function Hazards({ hazards, inUs, county, fetchedAt, failed }: Props) {
       const row = (
         <>
           <Text style={styles.label}>{label}</Text>
-          <Text style={styles.rating}>
-            {h.rating}
-            {advice ? ` ${expanded ? '▾' : '▸'}` : ''}
-          </Text>
+          <View style={styles.end}>
+            <Text style={styles.rating}>{h.rating}</Text>
+            {advice ? <Icon name={expanded ? 'chevronDown' : 'chevronRight'} size={16} color={colors.muted} /> : null}
+          </View>
         </>
       );
       return (
@@ -88,7 +91,6 @@ export function Hazards({ hazards, inUs, county, fetchedAt, failed }: Props) {
     });
   return (
     <View style={styles.section}>
-      <Text accessibilityRole="header" style={styles.heading}>Local hazards</Text>
       {body}
       {hazards && inUs ? (
         <Text style={styles.source}>
@@ -101,16 +103,16 @@ export function Hazards({ hazards, inUs, county, fetchedAt, failed }: Props) {
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 8 },
-  heading: { fontSize: 22, fontWeight: '700', marginTop: 12 },
-  item: { borderBottomWidth: 1, borderBottomColor: '#e3e8ef' },
+  section: ui.card,
+  item: { borderBottomWidth: 1, borderBottomColor: colors.border },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 44 },
-  label: { fontSize: 16, fontWeight: '600' },
-  rating: { fontSize: 15, color: '#444' },
-  advice: { backgroundColor: '#f2f5f9', borderRadius: 8, padding: 12, gap: 6, marginBottom: 8 },
-  step: { fontSize: 14, color: '#333' },
+  label: { fontFamily: fonts.semi, fontSize: 16 },
+  end: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  rating: { fontFamily: fonts.body, fontSize: 15, color: colors.muted },
+  advice: { backgroundColor: colors.bg, borderRadius: 8, padding: 12, gap: 6, marginBottom: 8 },
+  step: { fontFamily: fonts.body, fontSize: 14, color: colors.muted },
   link: { minHeight: 44, justifyContent: 'center' },
-  linkText: { color: '#0b5cad', fontSize: 15, fontWeight: '600' },
-  note: { fontSize: 15, color: '#333' },
-  source: { fontSize: 12, color: '#666' },
+  linkText: { fontFamily: fonts.semi, color: colors.primary, fontSize: 15 },
+  note: { fontFamily: fonts.body, fontSize: 15, color: colors.muted },
+  source: { fontFamily: fonts.body, fontSize: 12, color: colors.subtle },
 });

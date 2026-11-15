@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { colors, fonts, ui } from '../theme';
+
 import type { Hazard } from '../kit/rules';
 import { fetchElevation } from '../water/elevation';
 import { waterGuidance, type WaterLine } from '../water/guidance';
@@ -13,10 +15,12 @@ type Props = {
   hazards: Hazard[];
   // Event names of active NWS alerts.
   activeAlerts: string[];
+  // Home screen: show only the urgent boil/do-not-drink card, and nothing when water is fine.
+  urgentOnly?: boolean;
 };
 
 // Renders at once with both boil times; one elevation fetch per location narrows it down.
-export function WaterSafety({ lat, lon, gallons, countryCode, hazards, activeAlerts }: Props) {
+function useGuidance({ lat, lon, gallons, countryCode, hazards, activeAlerts }: Props) {
   const [elevationM, setElevationM] = useState<number | null>(null);
   useEffect(() => {
     let live = true;
@@ -26,40 +30,58 @@ export function WaterSafety({ lat, lon, gallons, countryCode, hazards, activeAle
       live = false;
     };
   }, [lat, lon]);
+  return waterGuidance({ gallons, countryCode, hazards, activeAlerts, elevationM });
+}
 
-  const g = waterGuidance({ gallons, countryCode, hazards, activeAlerts, elevationM });
-  const line = (l: WaterLine, style = styles.text) => (
-    <Text key={l.id} style={style}>
-      {l.text} <Text style={styles.source}>Source: {l.source}</Text>
-    </Text>
-  );
+const line = (l: WaterLine, style = styles.text) => (
+  <Text key={l.id} style={style}>
+    {l.text} <Text style={styles.source}>Source: {l.source}</Text>
+  </Text>
+);
+
+export function WaterSafety(props: Props) {
+  const g = useGuidance(props);
+  const urgent = g.disaster && g.urgent;
+  if (props.urgentOnly && !urgent) return null;
   return (
     <View style={styles.section}>
       <Text accessibilityRole="header" style={styles.heading}>Water safety</Text>
-      {g.disaster && g.urgent ? (
+      {urgent ? (
         <View accessibilityRole="alert" style={styles.urgent}>
-          {line(g.disaster, styles.urgentText)}
+          {line(g.disaster!, styles.urgentText)}
         </View>
       ) : null}
-      <Text style={styles.text}>
-        Store <Text style={styles.qty}>{g.gallons} gallons</Text> for your household (3 days).{' '}
-        <Text style={styles.source}>Source: Ready.gov</Text>
-      </Text>
-      {g.baseline ? line(g.baseline) : null}
-      {g.disaster && !g.urgent ? line(g.disaster) : null}
-      <Text accessibilityRole="header" style={styles.sub}>If you need to make water safe</Text>
+      {props.urgentOnly ? null : (
+        <>
+          <Text style={styles.text}>
+            Store <Text style={styles.qty}>{g.gallons} gallons</Text> for your household (3 days).{' '}
+            <Text style={styles.source}>Source: Ready.gov</Text>
+          </Text>
+          {g.baseline ? line(g.baseline) : null}
+          {g.disaster && !g.urgent ? line(g.disaster) : null}
+        </>
+      )}
+    </View>
+  );
+}
+
+// How to treat water: its own card, at the bottom of the Water screen.
+export function WaterTreatment(props: Props) {
+  const g = useGuidance(props);
+  return (
+    <View style={styles.section}>
+      <Text accessibilityRole="header" style={styles.heading}>If you need to make water safe</Text>
       {g.steps.map((s) => line(s))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 8 },
-  heading: { fontSize: 22, fontWeight: '700', marginTop: 12 },
-  sub: { fontSize: 17, fontWeight: '700', marginTop: 4 },
-  text: { fontSize: 15, color: '#1f1f1f' },
-  qty: { fontWeight: '700', color: '#0b5cad' },
+  section: ui.card,
+  heading: ui.cardTitle,
+  text: { fontFamily: fonts.body, fontSize: 15, color: colors.text },
+  qty: { fontFamily: fonts.bold, color: colors.primary },
   urgent: { backgroundColor: '#fdecea', borderLeftWidth: 4, borderLeftColor: '#b42318', borderRadius: 8, padding: 12 },
-  urgentText: { fontSize: 15, fontWeight: '600', color: '#7a1a12' },
-  source: { fontSize: 12, color: '#666', fontWeight: '400' },
+  urgentText: { fontFamily: fonts.semi, fontSize: 15, color: '#7a1a12' },
+  source: { fontFamily: fonts.body, fontSize: 12, color: colors.subtle },
 });

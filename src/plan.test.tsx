@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 
+import Help from '../app/help';
 import Plan from '../app/plan';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -14,7 +15,7 @@ jest.mock('./supabase', () => ({
 
 const AsyncStorage = require('@react-native-async-storage/async-storage');
 
-// protects=the plan screen shows the kit and Nearby help, and a US user keeps the US help links when the area lookup fails; fails_when=plan.tsx drops NearbyHelp, or inUs comes only from the area result; no_claim=the live lookup returns in_us correctly
+// protects=the plan screen shows the kit, the Nearby help screen loads, and a US user keeps the US help links when the area lookup fails; fails_when=help.tsx drops NearbyHelp, or inUs comes only from the area result; no_claim=the live lookup returns in_us correctly
 test('plan: offline US user still gets the kit and US help links', async () => {
   globalThis.fetch = jest.fn().mockRejectedValue(new TypeError('Network request failed')) as unknown as typeof fetch;
   await AsyncStorage.setItem('household', JSON.stringify({ adults: 2, seniors: 0, children: 0, infants: 0, dogs: 0, cats: 0, medication: false, mobility: false }));
@@ -22,6 +23,9 @@ test('plan: offline US user still gets the kit and US help links', async () => {
 
   await render(<Plan />);
   expect(await screen.findByText("Couldn't load your area's hazards, so this is the basic kit.")).toBeTruthy();
+
+  await render(<Help />);
+  await screen.findByText('Nearby help');
   expect(screen.getByText('Nearby help')).toBeTruthy();
   expect(screen.getByRole('link', { name: '211.org' })).toBeTruthy();
   expect(screen.queryByText('Check your local emergency services.')).toBeNull();
@@ -38,5 +42,8 @@ test('plan: GPS user with the area lookup down gets US help links, like Warnings
   await render(<Plan />);
   expect(await screen.findByText("Couldn't load your area's hazards, so this is the basic kit.")).toBeTruthy();
   expect(screen.queryByText(/only available in the US/)).toBeNull();
+
+  await render(<Help />);
+  await screen.findByText('Nearby help');
   expect(screen.getByRole('link', { name: '211.org' })).toBeTruthy();
 });

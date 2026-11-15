@@ -1,6 +1,10 @@
 import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+
+import { Icon } from './Icon';
+import { Tap } from './Tap';
+import { colors, fonts, ui } from '../theme';
 
 // Months are 0-based (JS Date), as expo-notifications' yearly trigger expects.
 // shortcut: fixed dates for the US West (heat from May, fire from June), and US only since seasons flip in the south; use the area's hazards and hemisphere if we add regions.
@@ -52,19 +56,21 @@ export function KitReminders({ inUs }: { inUs: boolean }) {
 
   return (
     <View style={styles.section}>
-      <Pressable accessibilityRole="switch" accessibilityState={{ checked: on }} onPress={toggle} style={styles.row}>
-        <Text style={styles.box}>{on ? '☑' : '☐'}</Text>
+      <Tap accessibilityRole="switch" accessibilityState={{ checked: on }} onPress={toggle} style={styles.row}>
+        <View style={[styles.box, on && styles.boxOn]}>{on ? <Icon name="check" size={16} color="#fff" weight={3} /> : null}</View>
         <Text style={styles.text}>Remind me to check my kit before heat season (May 15) and fire season (June 15)</Text>
-      </Pressable>
+      </Tap>
       {problem ? <Text accessibilityRole="alert" style={styles.problem}>{problem}</Text> : null}
     </View>
   );
 }
 
+// Box matches the kit checklist's Check in app/plan.tsx.
 const styles = StyleSheet.create({
-  section: { gap: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
-  box: { fontSize: 22 },
-  text: { flex: 1, fontSize: 15, color: '#1f1f1f' },
-  problem: { fontSize: 14, color: '#7a1a12' },
+  section: ui.card,
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
+  box: { width: 24, height: 24, borderRadius: 7, borderWidth: 2, borderColor: colors.subtle, alignItems: 'center', justifyContent: 'center' },
+  boxOn: { backgroundColor: colors.success, borderColor: colors.success },
+  text: { flex: 1, fontFamily: fonts.body, fontSize: 15, color: colors.text },
+  problem: { fontFamily: fonts.body, fontSize: 14, color: colors.danger },
 });

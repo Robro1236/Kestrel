@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 
-import { contaminantNames, fetchWaterSystem, pickSystem } from '../data/waterSystem';
+import { contaminantNames, displayName, fetchWaterSystem, pickSystem } from '../data/waterSystem';
 import { WaterSystem } from './WaterSystem';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -79,4 +79,26 @@ test('WaterSystem: US only, shows violations with a dated source, falls back to 
   await render(<WaterSystem lat={40.71} lon={-74.01} inUs />);
   expect(await screen.findByText("Couldn't reach EPA drinking water records right now.")).toBeTruthy();
   expect(screen.queryByText('CITY OF MOUNTAIN HOUSE')).toBeNull();
+});
+
+// protects=EPA's inverted names read in normal order with EPA's capitals kept; fails_when="TRACY, CITY OF" stays inverted, or a name without the inversion is changed; no_claim=every EPA naming style is covered
+test('displayName: un-inverts "X, CITY OF" and leaves other names alone', () => {
+  expect(displayName('TRACY, CITY OF')).toBe('CITY OF TRACY');
+  expect(displayName('CITY OF MOUNTAIN HOUSE')).toBe('CITY OF MOUNTAIN HOUSE');
+  expect(displayName('CAL WATER SERVICE CO, STOCKTON')).toBe('CAL WATER SERVICE CO, STOCKTON');
+});
+
+// protects=the home screen shows the water system card only for a health-based violation; fails_when=onlyIfPoor hides a health violation or shows a clean system on home; no_claim=health-based is the only kind worth surfacing
+test('WaterSystem onlyIfPoor: shows a health violation, hides a clean system', async () => {
+  await AsyncStorage.clear();
+  mockFetch(boundary(['CA3910027', 'Residential Area', 24948]), json({ Results: { QueryID: '417' } }), echoRow(NITRATE));
+  await render(<WaterSystem lat={37.78} lon={-121.54} inUs onlyIfPoor />);
+  expect(await screen.findByText(/Health-based violation/)).toBeTruthy();
+  await screen.unmount();
+
+  await AsyncStorage.clear();
+  mockFetch(boundary(['CA3910027', 'Residential Area', 24948]), json({ Results: { QueryID: '417' } }), echoRow({ ...NITRATE, QtrsWithVio: '0', HealthFlag: 'No', CurrVioFlag: '0', SDWAContaminantsInViol3yr: null }));
+  await render(<WaterSystem lat={37.78} lon={-121.54} inUs onlyIfPoor />);
+  await new Promise((r) => setTimeout(r, 50));
+  expect(screen.queryByText('Your water system')).toBeNull();
 });

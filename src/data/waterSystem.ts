@@ -34,6 +34,9 @@ export const pickSystem = (features: Feature[]) =>
       (b.attributes.Population_Served_Count ?? 0) - (a.attributes.Population_Served_Count ?? 0),
   )[0]?.attributes.PWSID ?? null;
 
+// EPA lists some names inverted: "TRACY, CITY OF" -> "CITY OF TRACY". Capitals are kept as EPA writes them.
+export const displayName = (n: string) => n.replace(/^(.+?),\s*(\S.* OF)$/i, '$2 $1');
+
 // "1040=Nitrate; 5200=LEAD AND COPPER RULE REVISIONS" -> ["Nitrate", "Lead and copper rule revisions"]
 export const contaminantNames = (s: string | null | undefined) =>
   (s ?? '')

@@ -1,22 +1,25 @@
 import { useRouter } from 'expo-router';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AirBanner } from '../src/components/AirBanner';
+import { Tap } from '../src/components/Tap';
+import { AirBanner, useAirQuality } from '../src/components/AirBanner';
 import { CountyHelp } from '../src/components/CountyHelp';
 import { FamilyPlanLink } from '../src/components/FamilyPlanLink';
-import { Hazards } from '../src/components/Hazards';
+import { Icon } from '../src/components/Icon';
 import { KitReminders } from '../src/components/KitReminders';
-import { NearbyHelp, type PlacesResult } from '../src/components/NearbyHelp';
 import { Warnings } from '../src/components/Warnings';
 import { WaterSafety } from '../src/components/WaterSafety';
 import { WaterSystem } from '../src/components/WaterSystem';
 import { localDay } from '../src/date';
+import { airTier } from '../src/data/airQuality';
 import type { ResolvedLocation } from '../src/data/location';
 import { activeOnly, fetchWarnings, type Warnings as WarningsData } from '../src/data/nws';
 import { buildKit, type Hazard, type Household, type KitItem, waterGallons } from '../src/kit/rules';
 import { load, loadResult, recordPlanOnce, save, saveResult, type Saved } from '../src/storage';
 import { lookup, recordPlan } from '../src/supabase';
+import { spring } from '../src/motion';
+import { colors, fonts, ui } from '../src/theme';
 
 // Response of lookup?kind=area (see docs/SPEC.md).
 export type Area = {
@@ -37,22 +40,22 @@ export default function Plan() {
   const [checked, setChecked] = useState<string[]>([]);
   const [area, setArea] = useState<Saved<Area> | null>(null);
   const [areaFailed, setAreaFailed] = useState(false);
-  const [open, setOpen] = useState<string | null>(null);
+  // Several details can be open at once, so opening one never collapses another and shifts the page.
+  const [open, setOpen] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<Saved<WarningsData> | null>(null);
   const [warningsFailed, setWarningsFailed] = useState(false);
-  const [places, setPlaces] = useState<PlacesResult | null>(null);
+  const air = useAirQuality(place?.lat, place?.lon);
 
   // Render from what's saved first, then refresh the area in the background.
   useEffect(() => {
     let live = true;
     (async () => {
-      const [h, l, c, a, w, p] = await Promise.all([
+      const [h, l, c, a, w] = await Promise.all([
         load<Household>('household'),
         load<ResolvedLocation>('location'),
         load<string[]>('checked'),
         loadResult<Area>('area'),
         loadResult<WarningsData>('warnings'),
-        loadResult<PlacesResult>('places'),
       ]);
       if (!live) return;
       if (!h || !l) return router.replace('/setup');
@@ -72,7 +75,6 @@ export default function Plan() {
           () => live && setWarningsFailed(true),
         );
       }
-      setPlaces(p?.data ?? null);
       // First kit on this device adds one counter row; never awaited, so the plan doesn't wait on it.
       recordPlanOnce(recordPlan);
       try {
@@ -94,6 +96,16 @@ export default function Plan() {
   const tips = all.filter((i) => i.tip);
   // Checkmarks are kept by id; items the household no longer needs just don't count.
   const done = kit.filter((i) => checked.includes(i.id)).length;
+  const pct = kit.length ? Math.round((done / kit.length) * 100) : 0;
+  // The bar grows on a spring when the plan loads and on each check.
+  const fill = useRef(new Animated.Value(0)).current;
+  useEffect(() => spring(fill, pct, { layout: true }), [fill, pct]);
+  const width = fill.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'], extrapolate: 'clamp' });
+  // Once the hero's progress bar scrolls off screen, a slim copy slides out from under the header.
+  const bar = useRef({ heroY: 0, bottom: 0 }).current;
+  const [pinned, setPinned] = useState(false);
+  const strip = useRef(new Animated.Value(0)).current;
+  useEffect(() => spring(strip, pinned ? 1 : 0), [strip, pinned]);
 
   const toggle = (id: string) =>
     setChecked((c) => {
@@ -112,44 +124,69 @@ export default function Plan() {
 
   // Until the area lookup answers, trust the saved country (ZIPs are US); GPS has none, so try NWS.
   const inUs = area ? area.data.in_us : (place.countryCode ?? 'US') === 'US';
+  // Bad air goes near the top with the warnings; normal air is a footnote card at the bottom.
+  const airUrgent = !!air && !!airTier(air.aqi);
+  const alerts = activeOnly(warnings?.data.alerts ?? []).map((a) => a.event);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text accessibilityRole="header" style={styles.title}>Your emergency plan</Text>
-      <Text style={styles.note}>{place.label}</Text>
-      <Pressable accessibilityRole="link" onPress={() => router.replace('/setup')}>
-        <Text style={styles.link}>Edit household</Text>
-      </Pressable>
-      <FamilyPlanLink />
+    <View style={styles.page}>
+    <ScrollView
+      contentContainerStyle={ui.screen}
+      scrollEventThrottle={16}
+      onScroll={(e) => setPinned(e.nativeEvent.contentOffset.y > bar.heroY + bar.bottom)}
+    >
+      <View style={[ui.card, styles.hero]} onLayout={(e) => (bar.heroY = e.nativeEvent.layout.y)}>
+        <Text style={ui.eyebrow}>{place.label}</Text>
+        <Text accessibilityRole="header" style={styles.title}>Your emergency plan</Text>
+        <View style={styles.progressRow}>
+          <Text style={styles.note}>
+            {done} of {kit.length} ready
+          </Text>
+          <Text style={styles.pct}>{pct}%</Text>
+        </View>
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel="Kit progress"
+          accessibilityValue={{ min: 0, max: kit.length, now: done }}
+          style={styles.track}
+          onLayout={(e) => (bar.bottom = e.nativeEvent.layout.y + e.nativeEvent.layout.height)}
+        >
+          <Animated.View style={[styles.fill, { width }]} />
+        </View>
+        <View style={styles.chips}>
+          <Tap accessibilityRole="link" onPress={() => router.replace('/setup')} style={styles.chip}>
+            <Text style={styles.chipText}>Edit household</Text>
+          </Tap>
+          <FamilyPlanLink style={styles.chip} textStyle={styles.chipText} />
+        </View>
+      </View>
       <KitReminders inUs={inUs} />
 
       <Warnings lat={place.lat} lon={place.lon} inUs={inUs} warnings={warnings} failed={warningsFailed} />
-      <AirBanner lat={place.lat} lon={place.lon} />
+      {airUrgent ? <AirBanner air={air} /> : null}
+      {/* Only poor conditions show here, above the kit; the full cards live on their own screens. */}
+      <WaterSafety
+        urgentOnly
+        lat={place.lat}
+        lon={place.lon}
+        gallons={waterGallons(household, hazards)}
+        countryCode={place.countryCode ?? area?.data.country_code ?? null}
+        hazards={hazards}
+        activeAlerts={alerts}
+      />
+      <WaterSystem onlyIfPoor lat={place.lat} lon={place.lon} inUs={inUs} />
+      {alerts.length ? <CountyHelp countyFips={area?.data.county_fips} /> : null}
 
-      <Text accessibilityRole="header" style={styles.heading}>Supply kit</Text>
-      <Text style={styles.note}>
-        {done} of {kit.length} ready
-      </Text>
-      <View
-        accessibilityRole="progressbar"
-        accessibilityLabel="Kit progress"
-        accessibilityValue={{ min: 0, max: kit.length, now: done }}
-        style={styles.track}
-      >
-        <View style={[styles.fill, { width: `${kit.length ? (done / kit.length) * 100 : 0}%` }]} />
+      <View style={ui.card}>
+      <View style={styles.progressRow}>
+        <Text accessibilityRole="header" style={ui.cardTitle}>Supply kit</Text>
+        <Text style={styles.count}>{done}/{kit.length}</Text>
       </View>
       {kit.map((item) => {
         const on = checked.includes(item.id);
         return (
           <Info key={item.id} item={item} open={open} setOpen={setOpen}>
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: on }}
-            accessibilityLabel={item.qty ? `${item.label}, ${item.qty}` : item.label}
-            onPress={() => toggle(item.id)}
-            style={styles.item}
-          >
-            <View style={[styles.box, on && styles.boxOn]}>{on ? <Text style={styles.tick}>✓</Text> : null}</View>
+          <Check on={on} label={item.qty ? `${item.label}, ${item.qty}` : item.label} onPress={() => toggle(item.id)}>
             <View style={styles.itemText}>
               <Text style={[styles.label, on && styles.labelOn]}>
                 {item.label}
@@ -159,21 +196,23 @@ export default function Plan() {
                 {item.reason} <Text style={styles.source}>Source: {item.source}</Text>
               </Text>
             </View>
-          </Pressable>
+          </Check>
           </Info>
         );
       })}
-      <Text style={styles.source}>
+      <Text style={[styles.source, styles.footnote]}>
         {area
           ? `Sized for your area's hazards: FEMA National Risk Index, ${areaFailed ? 'saved' : 'fetched'} ${localDay(area.data.fetched_at)}.`
           : areaFailed
             ? "Couldn't load your area's hazards, so this is the basic kit."
             : "Checking your area's hazards…"}
       </Text>
+      </View>
+
 
       {tips.length ? (
-        <>
-          <Text accessibilityRole="header" style={styles.heading}>Extra advice</Text>
+        <View style={ui.card}>
+          <Text accessibilityRole="header" style={ui.cardTitle}>Extra advice</Text>
           {tips.map((item) => (
             <Info key={item.id} item={item} open={open} setOpen={setOpen}>
               <View style={styles.itemText}>
@@ -184,60 +223,70 @@ export default function Plan() {
               </View>
             </Info>
           ))}
-        </>
+        </View>
       ) : null}
-
-      <WaterSafety
-        lat={place.lat}
-        lon={place.lon}
-        gallons={waterGallons(household, hazards)}
-        countryCode={place.countryCode ?? area?.data.country_code ?? null}
-        hazards={hazards}
-        activeAlerts={activeOnly(warnings?.data.alerts ?? []).map((a) => a.event)}
-      />
-      <WaterSystem lat={place.lat} lon={place.lon} inUs={inUs} />
-      <Hazards
-        hazards={area ? area.data.hazards : null}
-        inUs={inUs}
-        county={area?.data.county}
-        fetchedAt={area?.data.fetched_at}
-        failed={areaFailed}
-      />
-      <NearbyHelp
-        lat={place.lat}
-        lon={place.lon}
-        inUs={inUs}
-        county={area?.data.county ?? null}
-        saved={places}
-        onResult={(r) => saveResult('places', r)}
-      />
-      <CountyHelp countyFips={area?.data.county_fips} />
     </ScrollView>
+    {/* Display only, and a duplicate of the hero bar, so it takes no taps and is hidden from screen readers. */}
+    <Animated.View
+      pointerEvents="none"
+      aria-hidden
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.strip, { opacity: strip, transform: [{ translateY: strip.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] }) }] }]}
+    >
+      <Text style={styles.note}>{done} of {kit.length} ready</Text>
+      <View style={[styles.track, styles.stripTrack]}>
+        <Animated.View style={[styles.fill, { width }]} />
+      </View>
+      <Text style={styles.pct}>{pct}%</Text>
+    </Animated.View>
+    </View>
+  );
+}
+
+// The box dips while held and pops back on release, so even a quick tap visibly registers.
+function Check({ on, label, onPress, children }: { on: boolean; label: string; onPress: () => void; children: ReactNode }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: on }}
+      accessibilityLabel={label}
+      onPress={onPress}
+      onPressIn={() => spring(scale, 0.78)}
+      onPressOut={() => spring(scale, 1, { bouncy: true })}
+      style={styles.item}
+    >
+      <Animated.View style={[styles.box, on && styles.boxOn, { transform: [{ perspective: 1000 }, { scale }] }]}>
+        {on ? <Icon name="check" size={16} color="#fff" weight={3} /> : null}
+      </Animated.View>
+      {children}
+    </Pressable>
   );
 }
 
 // A row with an optional info button that shows the item's longer details underneath.
 function Info({ item, open, setOpen, children }: {
   item: KitItem;
-  open: string | null;
-  setOpen: (id: string | null) => void;
+  open: string[];
+  setOpen: (f: (ids: string[]) => string[]) => void;
   children: ReactNode;
 }) {
-  const shown = open === item.id;
+  const shown = open.includes(item.id);
   return (
     <View>
       <View style={styles.row}>
         <View style={styles.itemText}>{children}</View>
         {item.details ? (
-          <Pressable
+          <Tap
             accessibilityRole="button"
             accessibilityLabel={`More about ${item.label}`}
             aria-expanded={shown}
-            onPress={() => setOpen(shown ? null : item.id)}
+            onPress={() => setOpen((ids) => (shown ? ids.filter((x) => x !== item.id) : [...ids, item.id]))}
             style={styles.info}
           >
-            <Text style={styles.infoText}>{shown ? '×' : 'i'}</Text>
-          </Pressable>
+            <Icon name={shown ? 'closeCircle' : 'info'} size={24} color={colors.primary} weight={1.75} />
+          </Tap>
         ) : null}
       </View>
       {shown ? <Text style={styles.details}>{item.details}</Text> : null}
@@ -248,24 +297,34 @@ function Info({ item, open, setOpen, children }: {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   info: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  infoText: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: '#0b5cad', color: '#0b5cad', fontWeight: '700', textAlign: 'center', lineHeight: 22 },
-  details: { fontSize: 14, color: '#333', backgroundColor: '#f2f5f9', borderRadius: 8, padding: 12, marginLeft: 38 },
+  details: { fontFamily: fonts.body, fontSize: 14, color: colors.muted, backgroundColor: colors.bg, borderRadius: 10, padding: 12, marginLeft: 38, marginBottom: 6 },
+  page: { flex: 1 },
+  strip: {
+    position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 20, paddingVertical: 10, backgroundColor: colors.bg,
+    borderBottomWidth: 1, borderBottomColor: colors.border, boxShadow: '0 8px 16px -12px rgba(28,25,23,0.25)',
+  },
+  stripTrack: { flex: 1, height: 6 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  container: { padding: 24, gap: 12, width: '100%', maxWidth: 560, alignSelf: 'center' },
-  title: { fontSize: 28, fontWeight: '700' },
-  heading: { fontSize: 22, fontWeight: '700', marginTop: 12 },
-  note: { fontSize: 15, color: '#333' },
-  link: { color: '#0b5cad', fontSize: 16, fontWeight: '600', paddingVertical: 4 },
-  track: { height: 12, borderRadius: 6, backgroundColor: '#e3e8ef', overflow: 'hidden' },
-  fill: { height: '100%', backgroundColor: '#1a7f37' },
-  item: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', minHeight: 44, paddingVertical: 6 },
-  box: { width: 26, height: 26, borderRadius: 6, borderWidth: 2, borderColor: '#555', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  boxOn: { backgroundColor: '#1a7f37', borderColor: '#1a7f37' },
-  tick: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  hero: { gap: 8, paddingVertical: 20 },
+  title: ui.pageTitle,
+  progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  pct: { fontFamily: fonts.bold, fontSize: 15, fontVariant: ['tabular-nums'], color: colors.success },
+  count: { fontFamily: fonts.bold, fontSize: 13, fontVariant: ['tabular-nums'], color: colors.primary, backgroundColor: colors.primarySoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: 'hidden' },
+  note: { fontFamily: fonts.body, fontSize: 15, color: colors.muted },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  chip: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.primarySoft },
+  chipText: { fontFamily: fonts.bold, color: colors.primary, fontSize: 14 },
+  track: { height: 10, borderRadius: 5, backgroundColor: colors.track, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 5, backgroundColor: colors.success },
+  item: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', minHeight: 44, paddingVertical: 8 },
+  box: { width: 24, height: 24, borderRadius: 7, borderWidth: 2, borderColor: colors.subtle, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  boxOn: { backgroundColor: colors.success, borderColor: colors.success },
   itemText: { flex: 1, gap: 2 },
-  label: { fontSize: 16, fontWeight: '600' },
-  labelOn: { color: '#555', textDecorationLine: 'line-through' },
-  qty: { fontWeight: '700', color: '#0b5cad' },
-  reason: { fontSize: 14, color: '#444' },
-  source: { fontSize: 12, color: '#666' },
+  label: { fontFamily: fonts.semi, fontSize: 16, color: colors.ink },
+  labelOn: { color: colors.subtle, textDecorationLine: 'line-through' },
+  qty: { fontFamily: fonts.bold, color: colors.primary },
+  reason: { fontFamily: fonts.body, fontSize: 14, color: colors.muted },
+  source: { fontFamily: fonts.body, fontSize: 12, color: colors.subtle },
+  footnote: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10 },
 });

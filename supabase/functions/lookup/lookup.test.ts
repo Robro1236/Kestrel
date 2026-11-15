@@ -248,15 +248,15 @@ test('places: nearest 3 per category, ways use center, shelters need coordinates
   ]);
 });
 
-// protects=neither an Overpass nor a FEMA failure is cached as "nothing nearby" / "no shelters" for 7 days; fails_when=an Overpass timeout remark or a FEMA HTTP-200 error body resolves instead of throwing; no_claim=other Overpass error remarks are worded this way
-test('places: Overpass timeout remark and FEMA error both throw', async () => {
+// protects=neither an Overpass nor a FEMA failure is cached as "nothing nearby" / "no shelters" for 7 days, and a FEMA failure keeps the places; fails_when=an Overpass timeout remark resolves instead of throwing, or a FEMA HTTP-200 error body gives [] or fails the lookup; no_claim=other Overpass error remarks are worded this way
+test('places: Overpass timeout remark throws; a FEMA error gives null shelters', async () => {
   await expect(
     fetchPlaces(37.78, -121.54, fakePlaces({ elements: [], remark: 'runtime error: Query timed out in "query" at line 2 after 41 seconds.' })),
   ).rejects.toThrow('Overpass');
   const pharmacy = { type: 'node', lat: 37.79, lon: -121.54, tags: { amenity: 'pharmacy', name: 'Walgreens' } };
   await expect(
-    fetchPlaces(37.78, -121.54, fakePlaces({ elements: [pharmacy] }, { error: { code: 400, message: 'Invalid query' } })),
-  ).rejects.toThrow('FEMA');
+    fetchPlaces(37.78, -121.54, fakePlaces({ elements: [pharmacy] }, { error: { code: 400, message: 'Invalid query' } })).then((r) => [r.places.map((p) => p.name), r.shelters]),
+  ).resolves.toEqual([['Walgreens'], null]);
 });
 
 // protects=a FEMA outage never breaks Nearby help outside the US, where shelters aren't shown; fails_when=a non-US point still calls FEMA; no_claim=the US box matches every FEMA-covered place

@@ -75,3 +75,24 @@ test('Now: pre-picks from a flood warning, shows kit state and who to call', asy
   expect(screen.queryByRole('link', { name: 'Call 911' })).toBeNull();
   expect(screen.getByText(/call your local emergency number/)).toBeTruthy();
 });
+
+// protects=an old saved copy (e.g. a stale fallback without numbers) is replaced by a fresh lookup; fails_when=Now trusts any saved copy for the place and never refetches; no_claim=the live lookup succeeds
+test('Now: a saved copy shows first, then a fresh lookup replaces it', async () => {
+  process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'anon';
+  const copy = (phone: string | null) => ({
+    lat: 0, lon: 0, fetched_at: '2026-11-15T10:00:00Z', shelters: [],
+    places: [{ category: 'hospital', name: 'County Hospital', phone, lat: 0, lon: 0, distance_km: 2 }],
+  });
+  globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => copy('(209) 555-0100') }) as unknown as typeof fetch;
+  jest.mocked(useLocalArea).mockReturnValue({
+    place: { lat: 0, lon: 0, label: 'Tracy, CA' }, inUs: true, area: null, places: copy(null),
+    household: { adults: 1, children: 0, seniors: 0, infants: 0, dogs: 0, cats: 0, medication: false, mobility: false },
+    warnings: null,
+  } as never);
+
+  await render(<Now />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Earthquake' }));
+  expect(await screen.findByRole('link', { name: 'Call County Hospital, (209) 555-0100' })).toBeTruthy();
+  expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('kind=places'), expect.anything());
+});

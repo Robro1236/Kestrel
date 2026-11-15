@@ -262,10 +262,16 @@ const inUsBox = (lat: number, lon: number) => lat >= 17.5 && lat <= 72 && lon >=
 
 // shortcut: shelters are cached with the places for 7 days, but they open and close within days; split them into their own kind with a ~1 h TTL if shelters matter for a real launch.
 export async function fetchPlaces(lat: number, lon: number, f: Fetch = fetch) {
-  // A shelter outage fails the lookup too: caching [] would say "no shelters" for 7 days. The handler serves the last row as stale.
-  // FEMA only covers the US, so other points skip it and a FEMA outage can't break them.
+  // A shelter outage gives null, not []: [] would say "no shelters" for 7 days, and failing the whole lookup threw away
+  // good places and ERs whenever FEMA was slow (it can take 60 s and 504). index.ts retries a null after a day.
+  // FEMA only covers the US, so other points skip it.
   const us = inUsBox(lat, lon);
-  const [p, s, cms] = await Promise.all([osmPlaces(lat, lon, f), us ? shelters(lat, lon, f) : [], us ? erHospitals(lat, lon, f) : { hospitals: [], counties: [] }]);
+  const fema = () =>
+    shelters(lat, lon, f).catch((e) => {
+      console.error('FEMA shelters failed', e);
+      return null;
+    });
+  const [p, s, cms] = await Promise.all([osmPlaces(lat, lon, f), us ? fema() : [], us ? erHospitals(lat, lon, f) : { hospitals: [], counties: [] }]);
   const er = cms.hospitals;
   // A hospital CMS lists gets CMS's phone number: official, and present even when OSM has none.
   const places = p.places.map((pl) => {

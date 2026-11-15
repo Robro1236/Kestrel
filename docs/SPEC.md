@@ -192,7 +192,7 @@ AsyncStorage keys: `household`, `location`, `checked`, `results` (the last succe
 
 ```
 T0 Data spike ──> T1 Scaffold ──┬─> T2 Kit rules + setup screen ──> T4 Plan screen ──> T8 Integrate + QA + submit
-                                ├─> T3 Supabase + lookup(area) ──> T5 Hazards + warnings + water ─┘
+                                ├─> T3 Supabase + lookup(area) ──> T5 Hazards + warnings + water ─┘ 
 T6 Vercel deploy + README (after T1)
 T7 lookup(places) + Nearby help + Air banner (after T3 skeleton)
 ```

@@ -208,21 +208,21 @@ const NEAR_DEG = 0.23;
 
 // The point's own county first, then the counties ~25 km around it. null when the own county's FCC or CMS lookup fails,
 // so the cache retries soon instead of keeping "no hospitals" for a week; a neighbor that fails is just left out.
-async function erHospitals(lat: number, lon: number, f: Fetch): Promise<ErHospital[] | null> {
+async function erHospitals(lat: number, lon: number, f: Fetch): Promise<{ hospitals: ErHospital[] | null; counties: string[] }> {
   try {
     const dLon = NEAR_DEG / Math.max(Math.cos((lat * Math.PI) / 180), 0.01);
     const around = [[NEAR_DEG, 0], [-NEAR_DEG, 0], [0, dLon], [0, -dLon]].map(([a, b]) => countyAt(lat + a, lon + b, f).catch(() => null));
     const own = await countyAt(lat, lon, f);
-    if (!own) return [];
+    if (!own) return { hospitals: [], counties: [] };
     const counties = [own];
     for (const c of await Promise.all(around)) {
       if (c && !counties.some((x) => x.name === c.name && x.state === c.state)) counties.push(c);
     }
     const [mine, ...rest] = await Promise.all(counties.map((c, i) => (i === 0 ? cmsErs(c, f) : cmsErs(c, f).catch(() => []))));
-    return [...mine, ...rest.flat()];
+    return { hospitals: [...mine, ...rest.flat()], counties: counties.map((c) => `${c.name}, ${c.state}`) };
   } catch (e) {
     console.error('CMS hospitals failed', e);
-    return null;
+    return { hospitals: null, counties: [] };
   }
 }
 
@@ -244,12 +244,13 @@ export async function fetchPlaces(lat: number, lon: number, f: Fetch = fetch) {
   // A shelter outage fails the lookup too: caching [] would say "no shelters" for 7 days. The handler serves the last row as stale.
   // FEMA only covers the US, so other points skip it and a FEMA outage can't break them.
   const us = inUsBox(lat, lon);
-  const [p, s, er] = await Promise.all([osmPlaces(lat, lon, f), us ? shelters(lat, lon, f) : [], us ? erHospitals(lat, lon, f) : []]);
+  const [p, s, cms] = await Promise.all([osmPlaces(lat, lon, f), us ? shelters(lat, lon, f) : [], us ? erHospitals(lat, lon, f) : { hospitals: [], counties: [] }]);
+  const er = cms.hospitals;
   // A hospital CMS lists gets CMS's phone number: official, and present even when OSM has none.
   const places = p.places.map((pl) => {
     const m = pl.category === 'hospital' && pl.name ? er?.find((h) => sameHospital(h.name, pl.name!)) : undefined;
     return m ? { ...pl, phone: m.phone, phone_source: 'cms' as const } : pl;
   });
   // lat/lon are the rounded request point, so the app can tell which location a saved copy belongs to.
-  return { lat, lon, places, source: p.source, shelters: s, er_hospitals: er };
+  return { lat, lon, places, source: p.source, shelters: s, er_hospitals: er, er_counties: cms.counties };
 }

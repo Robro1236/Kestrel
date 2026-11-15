@@ -393,5 +393,6 @@ test('places: ERs in neighboring counties are included', async () => {
   }) as typeof fetch;
   const r = await fetchPlaces(39.14, -121.62, up);
   expect(cmsCalls.sort()).toEqual(['BUTTE', 'SUTTER', 'YUBA']);
+  expect(r.er_counties[0]).toBe('SUTTER, CA');
   expect(r.er_hospitals?.map((h) => h.city).sort()).toEqual(['MARYSVILLE', 'OROVILLE']);
 });

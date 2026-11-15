@@ -2,7 +2,17 @@
 
 **Try it: https://kestrel-tan.vercel.app** (no account, no install)
 
-An emergency kit sized to your household and your area. Enter a ZIP code or city and who lives with you, and Kestrel builds a supply checklist with real quantities, adds items for your county's FEMA hazards, and saves it on your device so it works offline. Every fact shows its source.
+An emergency plan sized to your household and your area. Enter a ZIP code or city and who lives with you, and in under a minute Kestrel shows:
+
+- a **supply checklist** with real quantities, plus items for your county's FEMA hazards
+- **active weather warnings** (National Weather Service, US)
+- **water safety**: gallons to store, how to purify, and whether tap water is safe where you are
+- **nearby help**: hospitals, pharmacies, fire, police, food banks and open shelters, with directions
+- an **air quality warning** that appears only when the air is unhealthy
+
+Everything is saved on your device, so the plan still opens offline. Every fact shows its source and date. Kit, water and nearby help work worldwide; hazards and warnings are US-only.
+
+Demo walkthrough: [docs/DEMO.md](docs/DEMO.md).
 
 Built for the Rotary Club HackAIthon ("Create Lasting Impact"). Expo (React Native + TypeScript) on the web, with a Supabase backend.
 

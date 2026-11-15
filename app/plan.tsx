@@ -3,10 +3,13 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AirBanner } from '../src/components/AirBanner';
+import { CountyHelp } from '../src/components/CountyHelp';
+import { FamilyPlanLink } from '../src/components/FamilyPlanLink';
 import { Hazards } from '../src/components/Hazards';
 import { NearbyHelp, type PlacesResult } from '../src/components/NearbyHelp';
 import { Warnings } from '../src/components/Warnings';
 import { WaterSafety } from '../src/components/WaterSafety';
+import { WaterSystem } from '../src/components/WaterSystem';
 import type { ResolvedLocation } from '../src/data/location';
 import { activeOnly, fetchWarnings, type Warnings as WarningsData } from '../src/data/nws';
 import { buildKit, type Hazard, type Household, type KitItem, waterGallons } from '../src/kit/rules';
@@ -117,6 +120,7 @@ export default function Plan() {
       <Pressable accessibilityRole="link" onPress={() => router.replace('/setup')}>
         <Text style={styles.link}>Edit household</Text>
       </Pressable>
+      <FamilyPlanLink />
 
       <Warnings lat={place.lat} lon={place.lon} inUs={inUs} warnings={warnings} failed={warningsFailed} />
       <AirBanner lat={place.lat} lon={place.lon} />
@@ -190,6 +194,7 @@ export default function Plan() {
         hazards={hazards}
         activeAlerts={activeOnly(warnings?.data.alerts ?? []).map((a) => a.event)}
       />
+      <WaterSystem lat={place.lat} lon={place.lon} inUs={inUs} />
       <Hazards
         hazards={area ? area.data.hazards : null}
         inUs={inUs}
@@ -205,6 +210,7 @@ export default function Plan() {
         saved={places}
         onResult={(r) => saveResult('places', r)}
       />
+      <CountyHelp countyFips={area?.data.county_fips} />
     </ScrollView>
   );
 }

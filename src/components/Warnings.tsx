@@ -1,6 +1,7 @@
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { activeOnly, alertsPage, type Warnings as WarningsData } from '../data/nws';
+import { localDay, localTime } from '../date';
 import type { Saved } from '../storage';
 
 type Props = {
@@ -12,20 +13,17 @@ type Props = {
   failed: boolean;
 };
 
-const when = (iso: string) => new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-const day = (iso: string) => new Date(iso).toLocaleDateString();
-
 // Banner only when alerts are active; otherwise one plain status line.
 export function Warnings({ lat, lon, inUs, warnings, failed }: Props) {
   if (!inUs) return <Text style={styles.note}>Live warnings are only available in the US for now.</Text>;
   const alerts = activeOnly(warnings?.data.alerts ?? []);
-  const fetched = warnings ? `${failed ? 'saved' : 'fetched'} ${day(warnings.data.fetched_at)}` : '';
+  const fetched = warnings ? `${failed ? 'saved' : 'fetched'} ${localDay(warnings.data.fetched_at)}` : '';
 
   if (!alerts.length) {
     return (
       <Text style={styles.note}>
         {failed
-          ? `Couldn't check warnings right now.${warnings ? ` The last check (${day(warnings.data.fetched_at)}) found none.` : ''}`
+          ? `Couldn't check warnings right now.${warnings ? ` The last check (${localDay(warnings.data.fetched_at)}) found none.` : ''}`
           : warnings
             ? `No active warnings from the National Weather Service (${fetched}).`
             : 'Checking for weather warnings…'}
@@ -44,7 +42,11 @@ export function Warnings({ lat, lon, inUs, warnings, failed }: Props) {
             {a.event} <Text style={styles.severity}>({a.severity})</Text>
           </Text>
           <Text style={styles.headline}>{a.headline}</Text>
-          {a.ends ? <Text style={styles.note}>Until {when(a.ends)}</Text> : null}
+          {a.ends ? (
+            <Text style={styles.note}>Until {localTime(a.ends)}</Text>
+          ) : a.expires ? (
+            <Text style={styles.note}>Next update by {localTime(a.expires)}</Text>
+          ) : null}
         </View>
       ))}
       <Pressable

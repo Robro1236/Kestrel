@@ -14,7 +14,7 @@ const SAMPLE = {
         expires: '2026-11-14T21:00:00-06:00',
       },
     },
-    // No `ends`: falls back to `expires`.
+    // No `ends`: kept until `expires`.
     { properties: { '@id': 'b', event: 'Wind Advisory', headline: 'Wind Advisory', severity: 'Moderate', ends: null, expires: '2026-11-15T06:00:00-06:00' } },
     // Already over: dropped.
     { properties: { '@id': 'c', event: 'Freeze Warning', headline: 'Old', severity: 'Severe', ends: '2026-11-13T09:00:00-06:00' } },
@@ -24,7 +24,7 @@ const SAMPLE = {
 };
 const NOW = new Date('2026-11-14T15:00:00-06:00');
 
-// protects=the warning fields a judge sees (event, headline, severity, end time) from a sample alert response; fails_when=fields are misread, `expires` isn't used when `ends` is null, or ended/nameless alerts show; no_claim=today's live NWS alerts (which may be empty) parse the same way
+// protects=the warning fields a judge sees (event, headline, severity, end time) from a sample alert response; fails_when=fields are misread, `expires` is passed off as `ends`, an alert with only `expires` is dropped early, or ended/nameless alerts show; no_claim=today's live NWS alerts (which may be empty) parse the same way
 test('nws: parses a sample alert response', () => {
   expect(parseAlerts(SAMPLE, NOW)).toEqual([
     {
@@ -33,8 +33,10 @@ test('nws: parses a sample alert response', () => {
       headline: SAMPLE.features[0].properties.headline,
       severity: 'Severe',
       ends: '2026-11-14T20:45:00-06:00',
+      expires: '2026-11-14T21:00:00-06:00',
     },
-    { id: 'b', event: 'Wind Advisory', headline: 'Wind Advisory', severity: 'Moderate', ends: '2026-11-15T06:00:00-06:00' },
+    // `expires` is kept apart from `ends`: it's when the message is replaced, not when the danger ends.
+    { id: 'b', event: 'Wind Advisory', headline: 'Wind Advisory', severity: 'Moderate', ends: null, expires: '2026-11-15T06:00:00-06:00' },
   ]);
   expect(parseAlerts({ features: [] }, NOW)).toEqual([]);
 });

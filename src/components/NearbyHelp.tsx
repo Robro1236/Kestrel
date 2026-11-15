@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { fetchJson } from '../data/airQuality';
+import { localDay } from '../date';
 import { distanceKm, type Category, type Place, type Shelter } from '../../supabase/functions/lookup/places';
 
 // lat/lon: the rounded point the lookup ran for.
@@ -88,7 +89,7 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
       ) : null}
       {state === 'failed' ? (
         <Text style={styles.note}>
-          Couldn't load nearby places right now.{result ? ` Showing what we found on ${new Date(result.fetched_at).toLocaleDateString()}.` : ''}
+          Couldn't load nearby places right now.{result ? ` Showing what we found on ${localDay(result.fetched_at)}.` : ''}
         </Text>
       ) : null}
 
@@ -114,7 +115,7 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
             );
           })}
           <Text style={styles.source}>
-            Data © OpenStreetMap contributors, fetched {new Date(result.fetched_at).toLocaleDateString()}.
+            Data © OpenStreetMap contributors, fetched {localDay(result.fetched_at)}.
             {result.source === 'photon' ? ' Found by name search (Photon) while the main source is down, so some places may be missing.' : ''}
             {result.stale ? ' The live source is down, so this is the last saved copy.' : ''}
           </Text>
@@ -139,7 +140,7 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
             ))}
             {result ? (
               <Text style={styles.source}>
-                Source: FEMA open shelters, fetched {new Date(result.fetched_at).toLocaleDateString()}.
+                Source: FEMA open shelters, fetched {localDay(result.fetched_at)}.
                 {result.stale ? ' The live source is down; these shelters may have closed since.' : ''}
               </Text>
             ) : null}

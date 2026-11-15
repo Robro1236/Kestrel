@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { localDay } from '../date';
 import { fetchWaterSystem, type WaterSystemResult } from '../data/waterSystem';
 import { loadResult, saveResult, type Saved } from '../storage';
 
@@ -37,7 +38,7 @@ export function WaterSystem({ lat, lon, inUs }: { lat: number; lon: number; inUs
 
   if (!inUs) return null;
   const r = saved?.data.result;
-  const date = saved ? `${fresh ? 'fetched' : 'saved'} ${saved.savedAt.slice(0, 10)}` : '';
+  const date = saved ? `${fresh ? 'fetched' : 'saved'} ${localDay(saved.savedAt)}` : '';
 
   return (
     <View style={styles.section}>

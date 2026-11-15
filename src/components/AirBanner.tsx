@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { airTier, fetchAirQuality, type AirQuality } from '../data/airQuality';
+import { localDay } from '../date';
 
 // Renders nothing unless US AQI > 100. One fetch per location, never on a timer.
 export function AirBanner({ lat, lon }: { lat: number; lon: number }) {
@@ -24,7 +25,7 @@ export function AirBanner({ lat, lon }: { lat: number; lon: number }) {
         Air quality: {tier.label} (US AQI {Math.round(air.aqi)})
       </Text>
       <Text style={styles.tip}>{tier.tip}</Text>
-      <Text style={styles.source}>Source: Open-Meteo air quality, fetched {new Date(air.fetchedAt).toLocaleDateString()}</Text>
+      <Text style={styles.source}>Source: Open-Meteo air quality, fetched {localDay(air.fetchedAt)}</Text>
     </View>
   );
 }

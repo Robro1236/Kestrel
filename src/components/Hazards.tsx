@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { HAZARD_ADVICE } from '../kit/hazardAdvice';
+import { localDay } from '../date';
 import { isAtLeastModerate, type Hazard } from '../kit/rules';
 
 const LABELS: Record<string, string> = {
@@ -92,7 +93,7 @@ export function Hazards({ hazards, inUs, county, fetchedAt, failed }: Props) {
       {hazards && inUs ? (
         <Text style={styles.source}>
           Source: FEMA National Risk Index (county level){county ? `, ${county}` : ''}
-          {fetchedAt ? `, ${failed ? 'saved' : 'fetched'} ${new Date(fetchedAt).toLocaleDateString()}` : ''}
+          {fetchedAt ? `, ${failed ? 'saved' : 'fetched'} ${localDay(fetchedAt)}` : ''}
         </Text>
       ) : null}
     </View>

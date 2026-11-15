@@ -9,6 +9,10 @@ An emergency plan sized to your household and your area. Enter a ZIP code or cit
 - **water safety**: gallons to store, how to purify, and whether tap water is safe where you are
 - **nearby help**: hospitals, pharmacies, fire, police, food banks and open shelters, with directions
 - an **air quality warning** that appears only when the air is unhealthy
+- **your water system** (US): EPA drinking-water violations for the system that serves you
+- a **family plan card**: meeting places and contacts, printable or shareable
+- **San Joaquin County** links: alert sign-up, evacuation zones, cooling centers
+- a **"households prepared"** count on the home screen
 
 Everything is saved on your device, so the plan still opens offline. Every fact shows its source and date. Kit, water and nearby help work worldwide; hazards and warnings are US-only.
 

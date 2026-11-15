@@ -10,6 +10,7 @@ import { NearbyHelp, type PlacesResult } from '../src/components/NearbyHelp';
 import { Warnings } from '../src/components/Warnings';
 import { WaterSafety } from '../src/components/WaterSafety';
 import { WaterSystem } from '../src/components/WaterSystem';
+import { localDay } from '../src/date';
 import type { ResolvedLocation } from '../src/data/location';
 import { activeOnly, fetchWarnings, type Warnings as WarningsData } from '../src/data/nws';
 import { buildKit, type Hazard, type Household, type KitItem, waterGallons } from '../src/kit/rules';
@@ -27,8 +28,6 @@ export type Area = {
   fetched_at: string;
   stale: boolean;
 };
-
-const day = (iso: string) => new Date(iso).toLocaleDateString();
 
 export default function Plan() {
   const router = useRouter();
@@ -164,7 +163,7 @@ export default function Plan() {
       })}
       <Text style={styles.source}>
         {area
-          ? `Sized for your area's hazards: FEMA National Risk Index, ${areaFailed ? 'saved' : 'fetched'} ${day(area.data.fetched_at)}.`
+          ? `Sized for your area's hazards: FEMA National Risk Index, ${areaFailed ? 'saved' : 'fetched'} ${localDay(area.data.fetched_at)}.`
           : areaFailed
             ? "Couldn't load your area's hazards, so this is the basic kit."
             : "Checking your area's hazards…"}

@@ -1,7 +1,12 @@
 // National Weather Service active alerts, called straight from the app (CORS-friendly, no key).
 import { fetchJson } from './airQuality';
 
-export type Alert = { id: string; event: string; headline: string; severity: string; ends: string | null };
+// ends: when the hazard is expected to end. expires: when this message is due to be replaced, not the end
+// of the danger. Optional because lists saved before this field existed don't have it.
+export type Alert = { id: string; event: string; headline: string; severity: string; ends: string | null; expires?: string | null };
+
+// The time an alert stops being shown: its end, or failing that when the message expires.
+const lastsUntil = (a: Pick<Alert, 'ends' | 'expires'>) => a.ends ?? a.expires ?? null;
 // lat/lon: the point checked, so a saved copy from another place is never shown here.
 export type Warnings = { lat: number; lon: number; alerts: Alert[]; fetched_at: string };
 
@@ -14,9 +19,11 @@ export function parseAlerts(body: unknown, now = new Date()): Alert[] {
   return features.flatMap((f): Alert[] => {
     const p = f?.properties ?? {};
     const event = str(p.event);
-    const ends = str(p.ends) ?? str(p.expires);
-    if (!event || (ends && new Date(ends) < now)) return [];
-    return [{ id: str(p['@id']) ?? str(p.id) ?? event, event, headline: str(p.headline) ?? event, severity: str(p.severity) ?? 'Unknown', ends }];
+    const ends = str(p.ends);
+    const expires = str(p.expires);
+    const until = lastsUntil({ ends, expires });
+    if (!event || (until && new Date(until) < now)) return [];
+    return [{ id: str(p['@id']) ?? str(p.id) ?? event, event, headline: str(p.headline) ?? event, severity: str(p.severity) ?? 'Unknown', ends, expires }];
   });
 }
 
@@ -35,4 +42,7 @@ export const alertsPage = (lat: number, lon: number) =>
   `https://forecast.weather.gov/MapClick.php?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`;
 
 // A saved list can outlive its alerts; every section filters through this so they agree.
-export const activeOnly = (alerts: Alert[], now = new Date()) => alerts.filter((a) => !a.ends || new Date(a.ends) > now);
+export const activeOnly = (alerts: Alert[], now = new Date()) => alerts.filter((a) => {
+    const until = lastsUntil(a);
+    return !until || new Date(until) > now;
+  });

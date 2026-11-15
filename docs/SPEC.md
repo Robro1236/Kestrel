@@ -22,6 +22,8 @@ Greenfield. The repo holds only `README.md`, `CLAUDE.md`, `CLAUDE_SETUP.md`, `.m
 
 Update 2026-11-14: T0 and T1 are done. The Expo SDK 58 scaffold, `src/data/jmp.json` and `docs/data-sources.md` exist. The spike's corrections are folded into this spec.
 
+Update 2026-11-14 (later): T0–T8 are done, and stretches 1 (EPA water system), 2 (family plan card) and 5 (San Joaquin County) are merged. The live link needs a redeploy to show them.
+
 ## Definition of Done (the judge test)
 
 A judge opens the public Vercel link on a phone or computer and, **in under 60 seconds with no account**:

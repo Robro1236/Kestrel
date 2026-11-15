@@ -14,8 +14,12 @@ Most households aren't ready for an emergency. The FEMA and Red Cross apps give 
 4. **Local hazards:** the county's FEMA risk ratings add items (e.g. heat wave adds water). Each one shows "Source: FEMA National Risk Index" and a date.
 5. **Warnings:** live National Weather Service alerts for this point, or "No active warnings".
 6. **Water safety:** gallons to store, boil and bleach steps, and whether tap water is safe in this country.
-7. **Nearby help:** the nearest hospitals and pharmacies, with distance and a Directions button.
-8. Turn on airplane mode and reload. The plan and the checkmarks are still there, labelled with when they were saved.
+7. **Your water system:** the EPA record for the system that serves this address, with any violations in the last 3 years.
+8. **Nearby help:** the nearest hospitals and pharmacies, with distance and a Directions button.
+9. **San Joaquin County:** sign up for county alerts and look up your evacuation zone.
+10. **Family plan card** (link under the title): fill in a meeting place and an out-of-area contact, then Print.
+11. Back on the home screen, "N households prepared" counts every device that has built a kit (each device counts once).
+12. Turn on airplane mode and reload. The plan and the checkmarks are still there, labelled with when they were saved.
 
 ## Show it isn't US-only (20 s)
 

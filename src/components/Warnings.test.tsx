@@ -30,3 +30,12 @@ test('Warnings: banner only for active alerts, plain text otherwise', async () =
   await screen.rerender(<Warnings {...p} warnings={saved('2020-01-01T00:00:00Z')} />);
   expect(screen.queryByText('Tornado Warning issued by NWS Norman OK')).toBeNull();
 });
+
+// protects=an alert with no end time shows when its next update is due, never as "Until", and times name their zone; fails_when=`expires` reads as the end of the danger, or the time has no zone; no_claim=the zone shown is the place's (it's the phone's)
+test('Warnings: "Next update by" when NWS gives no end time', async () => {
+  const alert = { id: 'b', event: 'Wind Advisory', headline: 'Wind Advisory', severity: 'Moderate', ends: null, expires: '2099-01-01T12:00:00Z' };
+  const warnings = { savedAt: '2026-11-14T12:00:00Z', data: { lat: 35.4676, lon: -97.5164, fetched_at: '2026-11-14T12:00:00Z', alerts: [alert] } };
+  await render(<Warnings lat={35.4676} lon={-97.5164} inUs failed={false} warnings={warnings} />);
+  expect(screen.getByText(/^Next update by .+ (UTC|GMT[-+0-9:]*|[A-Z]{2,5})$/)).toBeTruthy();
+  expect(screen.queryByText(/^Until /)).toBeNull();
+});

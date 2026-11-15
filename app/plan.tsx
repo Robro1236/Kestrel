@@ -8,6 +8,7 @@ import { Hazards } from '../src/components/Hazards';
 import { NearbyHelp, type PlacesResult } from '../src/components/NearbyHelp';
 import { Warnings } from '../src/components/Warnings';
 import { WaterSafety } from '../src/components/WaterSafety';
+import { WaterSystem } from '../src/components/WaterSystem';
 import type { ResolvedLocation } from '../src/data/location';
 import { activeOnly, fetchWarnings, type Warnings as WarningsData } from '../src/data/nws';
 import { buildKit, type Hazard, type Household, type KitItem, waterGallons } from '../src/kit/rules';
@@ -191,6 +192,7 @@ export default function Plan() {
         hazards={hazards}
         activeAlerts={activeOnly(warnings?.data.alerts ?? []).map((a) => a.event)}
       />
+      <WaterSystem lat={place.lat} lon={place.lon} inUs={inUs} />
       <Hazards
         hazards={area ? area.data.hazards : null}
         inUs={inUs}

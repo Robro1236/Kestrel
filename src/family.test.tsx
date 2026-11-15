@@ -46,3 +46,26 @@ test('FamilyPlanLink: opens the family plan card', async () => {
   await fireEvent.press(screen.getByRole('link', { name: 'Family plan card' }));
   expect(mockRouter.push).toHaveBeenCalledWith('/family');
 });
+
+// protects=the plan card fits the household: one pet photo slot per dog and cat, no Pets section without pets, and photos print under Pets; fails_when=slots don't match the household, a pet-free household gets a Pets section, or a non-JPEG URL reaches the print page; no_claim=the photo picker or resizer works on a device
+test('family: pet photos follow the household and print under Pets', async () => {
+  const { petSlots } = require('../app/family');
+  expect(petSlots({ dogs: 2, cats: 1 })).toEqual(['Dog', 'Dog 2', 'Cat']);
+  expect(petSlots(null)).toEqual([]);
+
+  await render(<Family />);
+  expect(await screen.findByText('Where to meet')).toBeTruthy();
+  expect(screen.queryByText('Pets')).toBeNull();
+  await screen.unmount();
+
+  await AsyncStorage.setItem('household', JSON.stringify({ dogs: 1, cats: 1 }));
+  await render(<Family />);
+  expect(await screen.findByLabelText('Add a photo of dog')).toBeTruthy();
+  expect(screen.getByLabelText('Add a photo of cat')).toBeTruthy();
+
+  const jpeg = 'data:image/jpeg;base64,AAAA';
+  const html = cardHtml(EMPTY_PLAN, { photos: [jpeg, 'javascript:alert(1)'] });
+  expect(html).toContain(`<dt>Pet details</dt><dd></dd><dd class="photos"><img src="${jpeg}" alt=""></dd>`);
+  expect(html).not.toContain('javascript:');
+  expect(cardHtml(EMPTY_PLAN, { pets: false })).not.toContain('<dt>Pet details</dt>');
+});

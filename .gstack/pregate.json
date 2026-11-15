@@ -6,6 +6,7 @@
     "app.json": [],
     "package.json": [],
     "package-lock.json": [],
+    "supabase/functions/lookup/index.ts": [],
     "tsconfig.json": []
   }
 }

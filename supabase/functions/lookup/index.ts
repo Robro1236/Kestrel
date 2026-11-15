@@ -2,6 +2,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { fetchArea } from './area.ts';
 import { makeHandler } from './handler.ts';
+import { fetchPlaces } from './places.ts';
 
 // Service role bypasses RLS on lookup_cache; both values are injected by Supabase.
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
@@ -27,6 +28,6 @@ const cache = {
 Deno.serve(
   makeHandler(cache, {
     area: { ttlDays: 30, fetch: fetchArea },
-    // places (T7): { ttlDays: 7, fetch: fetchPlaces }
+    places: { ttlDays: 7, fetch: fetchPlaces },
   }),
 );

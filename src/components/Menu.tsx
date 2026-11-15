@@ -15,6 +15,7 @@ const LINKS: [string, Href][] = [
   ['Local hazards', '/hazards'],
   ['Water', '/water'],
   ['Nearby help', '/help'],
+  ['After a disaster', '/after'],
   ['County alerts', '/county'],
   ['Family plan card', '/family'],
 ];

@@ -8,18 +8,21 @@ Most households aren't ready for an emergency. The FEMA and Red Cross apps give 
 
 ## The flow (2 min)
 
+Local hazards, Water, Nearby help and County alerts are in the menu (☰, top right). If there's time, the menu also has After a disaster and Disaster history (the county's 25 federal declarations).
+
 1. Open https://kestrel-tan.vercel.app on a phone. No account, no install.
 2. Type `95391` (Mountain House / Tracy, CA). Add 2 adults, 1 infant, 1 dog.
 3. **Supply kit:** the water line says the exact gallons for this household, and infant and dog items appear only because we added them. Check off a few items and the progress bar moves.
-4. **Local hazards:** the county's FEMA risk ratings add items (e.g. heat wave adds water). Each one shows "Source: FEMA National Risk Index" and a date.
-5. **Warnings:** live National Weather Service alerts for this point, or "No active warnings".
-6. **Water safety:** gallons to store, boil and bleach steps, and whether tap water is safe in this country.
-7. **Your water system:** the EPA record for the system that serves this address, with any violations in the last 3 years.
-8. **Nearby help:** the nearest hospitals and pharmacies, with distance and a Directions button.
-9. **San Joaquin County:** sign up for county alerts and look up your evacuation zone.
-10. **Family plan card** (link under the title): fill in a meeting place and an out-of-area contact, then Print.
-11. Back on the home screen, "N households prepared" counts every device that has built a kit (each device counts once).
-12. Turn on airplane mode and reload. The plan and the checkmarks are still there, labelled with when they were saved.
+4. **Something happening now?** (card near the top): tap Earthquake. Three things on one screen: what to do now (Ready.gov steps, with source), what to grab from *your* kit (and what isn't packed yet), and who to call: 911, then the nearest ER from the official hospital list. If the Weather Service has an active warning here, the right emergency is already picked.
+5. **Local hazards:** the county's FEMA risk ratings add items (e.g. heat wave adds water). Each one shows "Source: FEMA National Risk Index" and a date.
+6. **Warnings:** live National Weather Service alerts for this point, or "No active warnings".
+7. **Water safety:** gallons to store, boil and bleach steps, and whether tap water is safe in this country.
+8. **Your water system:** the EPA record for the system that serves this address, with any violations in the last 3 years.
+9. **Nearby help:** the nearest hospitals and pharmacies, with distance and a Directions button, plus the county's emergency rooms with their main phone lines (official CMS hospital list).
+10. **San Joaquin County:** sign up for county alerts and look up your evacuation zone.
+11. **Family plan card** (link under the title): fill in a meeting place and an out-of-area contact, then Print.
+12. Back on the home screen, "N households prepared" counts every device that has built a kit (each device counts once).
+13. Turn on airplane mode and reload. The plan and the checkmarks are still there, labelled with when they were saved.
 
 ## Show it isn't US-only (20 s)
 

@@ -221,7 +221,7 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
 }
 
 // CMS writes names in capitals.
-export const titleCase = (s: string) => s.toLowerCase().replace(/[a-z]/g, (c) => c.toUpperCase()).replace(/'S/g, "'s");
+export const titleCase = (s: string) => s.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()).replace(/'S\b/g, "'s");
 
 // A Pressable, not a pressable Text, so keyboards can reach it and the tap target is 44 px tall.
 function Link({ url, label, children }: { url: string; label?: string; children: string }) {

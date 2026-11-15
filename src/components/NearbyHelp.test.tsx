@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { Linking } from 'react-native';
 
-import { NearbyHelp, type PlacesResult } from './NearbyHelp';
+import { NearbyHelp, titleCase, type PlacesResult } from './NearbyHelp';
 
 const result = (name: string, lat = 37.78, lon = -121.54): PlacesResult => ({
   lat,
@@ -68,6 +68,11 @@ test('NearbyHelp: says when places came from the Photon fallback', async () => {
 });
 
 // protects=a place with a phone number shows a tappable call link that dials the digits, and US users get a Call 2-1-1 link; fails_when=the number is hidden, a hospital's line shows without the call-911 note, the tel: link keeps spaces or brackets, or a place without a number shows a call link; no_claim=the phone opens its dialer
+// protects=CMS names readable; fails_when=titleCase leaves them lower case; no_claim=names CMS spells oddly
+test('titleCase: CMS capitals become title case', () => {
+  expect(titleCase("ST JOSEPH'S MEDICAL CENTER OF STOCKTON")).toBe("St Joseph's Medical Center Of Stockton");
+});
+
 test('NearbyHelp: phone numbers are tappable call links', async () => {
   const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
   globalThis.fetch = jest.fn().mockRejectedValue(new TypeError('offline')) as unknown as typeof fetch;

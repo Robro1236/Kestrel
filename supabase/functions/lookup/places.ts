@@ -3,7 +3,8 @@
 
 export const CATEGORIES = ['hospital', 'fire_station', 'police', 'pharmacy', 'food_bank'] as const;
 export type Category = (typeof CATEGORIES)[number];
-export type Place = { category: Category; name: string | null; lat: number; lon: number; distance_km: number };
+// phone: as tagged in OpenStreetMap; null when untagged or found through Photon, missing on copies saved before phones were added.
+export type Place = { category: Category; name: string | null; phone?: string | null; lat: number; lon: number; distance_km: number };
 export type Shelter = { name: string | null; address: string | null; lat: number; lon: number; distance_km: number };
 
 const RADIUS_M = 10_000;
@@ -43,7 +44,10 @@ export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
-type Raw = { category: Category; name: string | null; lat: number | null; lon: number | null };
+type Raw = { category: Category; name: string | null; phone?: string | null; lat: number | null; lon: number | null };
+
+// OSM allows several numbers separated by ';'; the first is the main line.
+const firstPhone = (v: unknown) => (typeof v === 'string' && v.split(';')[0].trim()) || null;
 
 // The nearest 3 per category within the radius.
 function nearest(lat: number, lon: number, raw: Raw[]): Place[] {
@@ -52,7 +56,7 @@ function nearest(lat: number, lon: number, raw: Raw[]): Place[] {
     if (!CATEGORIES.includes(r.category) || r.lat === null || r.lon === null) continue;
     const d = distanceKm(lat, lon, r.lat, r.lon);
     if (d > RADIUS_M / 1000) continue; // `around` and a bbox both reach past the circle
-    places.push({ category: r.category, name: r.name, lat: r.lat, lon: r.lon, distance_km: d });
+    places.push({ category: r.category, name: r.name, phone: r.phone ?? null, lat: r.lat, lon: r.lon, distance_km: d });
   }
   places.sort((a, b) => a.distance_km - b.distance_km);
   return CATEGORIES.flatMap((c) => places.filter((p) => p.category === c).slice(0, PER_CATEGORY));
@@ -100,6 +104,7 @@ out center tags;`;
       return {
         category: tags.social_facility === 'food_bank' ? 'food_bank' : tags.amenity,
         name: tags.name ?? null,
+        phone: firstPhone(tags.phone ?? tags['contact:phone']),
         lat: num(el.lat ?? el.center?.lat),
         lon: num(el.lon ?? el.center?.lon),
       };

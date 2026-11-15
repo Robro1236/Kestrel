@@ -1,4 +1,6 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
+
+import { Linking } from 'react-native';
 
 import { NearbyHelp, type PlacesResult } from './NearbyHelp';
 
@@ -63,4 +65,20 @@ test('NearbyHelp: says when places came from the Photon fallback', async () => {
   await screen.rerender(<NearbyHelp {...props} saved={result('Walgreens')} />);
   expect(await screen.findByText(/Walgreens/)).toBeTruthy();
   expect(screen.queryByText(/some places may be missing/)).toBeNull();
+});
+
+// protects=a place with a phone number shows a tappable call link that dials the digits, and US users get a Call 2-1-1 link; fails_when=the number is hidden, a hospital's line shows without the call-911 note, the tel: link keeps spaces or brackets, or a place without a number shows a call link; no_claim=the phone opens its dialer
+test('NearbyHelp: phone numbers are tappable call links', async () => {
+  const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+  globalThis.fetch = jest.fn().mockRejectedValue(new TypeError('offline')) as unknown as typeof fetch;
+  const saved = result('Walgreens');
+  saved.places.push({ category: 'hospital', name: 'Kaiser', phone: '+1 (209) 555-0100', lat: 37.79, lon: -121.54, distance_km: 1.1 });
+  await render(<NearbyHelp lat={37.78} lon={-121.54} inUs county={null} saved={saved} />);
+
+  await fireEvent.press(await screen.findByLabelText('Call Kaiser, +1 (209) 555-0100'));
+  expect(open).toHaveBeenCalledWith('tel:+12095550100');
+  expect(screen.queryByLabelText(/^Call Walgreens/)).toBeNull();
+  expect(screen.getByText('In an emergency call 911. These are office lines.')).toBeTruthy();
+  await fireEvent.press(screen.getByLabelText('Call 2-1-1'));
+  expect(open).toHaveBeenLastCalledWith('tel:211');
 });

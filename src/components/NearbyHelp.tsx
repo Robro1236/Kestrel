@@ -19,6 +19,9 @@ const CATEGORY_LABELS: Record<Category, string> = {
   food_bank: 'Food bank',
 };
 
+// Their own numbers are office lines, not emergency dispatch.
+const EMERGENCY: Category[] = ['hospital', 'fire_station', 'police'];
+
 // Visited and confirmed to load on this date.
 export const LINKS_CHECKED = '2026-11-14';
 const LINKS = {
@@ -27,6 +30,8 @@ const LINKS = {
   redCrossShelters: 'https://www.redcross.org/get-help/disaster-relief-and-recovery-services/find-an-open-shelter.html',
 };
 
+// tel: links need digits only; the number is shown as OpenStreetMap has it.
+export const telUrl = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
 const directions = (lat: number, lon: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
 
 // Uncached Overpass takes 25-34 s; the function gives it 35 s, then falls back to Photon.
@@ -103,11 +108,21 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
       {cats.filter((c) => byCat(c).length).map((c) => (
         <View key={c} style={styles.section}>
           <Text accessibilityRole="header" style={ui.cardTitle}>{CATEGORY_LABELS[c]}</Text>
+          {EMERGENCY.includes(c) && byCat(c).some((p) => p.phone) ? (
+            <Text style={styles.note}>
+              In an emergency call {inUs ? '911' : 'your local emergency number'}. These are office lines.
+            </Text>
+          ) : null}
           {byCat(c).map((p, i) => (
             <View key={i} style={styles.row}>
               <Text style={styles.name}>
                 {p.name ?? CATEGORY_LABELS[c]} · {p.distance_km} km
               </Text>
+              {p.phone ? (
+                <Link url={telUrl(p.phone)} label={`Call ${p.name ?? CATEGORY_LABELS[c]}, ${p.phone}`}>
+                  {p.phone}
+                </Link>
+              ) : null}
               <Link url={directions(p.lat, p.lon)} label={`Directions to ${p.name ?? CATEGORY_LABELS[c]}`}>
                 Directions
               </Link>
@@ -146,6 +161,7 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
             <Text style={styles.text}>
               Call or text <Text style={styles.bold}>2-1-1</Text> (United Way 211), or check {countyText}.
             </Text>
+            <Link url="tel:211" label="Call 2-1-1">Call 2-1-1</Link>
             <Link url={LINKS.twoOneOne}>211.org</Link>
           </View>
 
@@ -171,7 +187,7 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
 
       {result ? (
         <Text style={[styles.source, styles.footnote]}>
-          Places: data © OpenStreetMap contributors, fetched {localDay(result.fetched_at)}.
+          Places and phone numbers: data © OpenStreetMap contributors, fetched {localDay(result.fetched_at)}.
           {result.source === 'photon' ? ' Found by name search (Photon) while the main source is down, so some places may be missing.' : ''}
           {result.stale ? ' The live source is down, so this is the last saved copy.' : ''}
         </Text>

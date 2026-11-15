@@ -60,11 +60,15 @@ export default function NowScreen() {
   const near = result?.places ?? [];
   const calls = CALL.flatMap(([cat, label]) => {
     // places come sorted by distance; take the nearest one with a number.
-    const p = near.find((x) => x.category === cat && x.phone);
+    // OSM tags clinics and medical offices as hospitals, so a hospital must have matched the official ER list (phone_source 'cms').
+    const p = near.find((x) => x.category === cat && x.phone && (cat !== 'hospital' || x.phone_source === 'cms'));
     if (p) return [{ label, name: p.name ?? label, phone: p.phone!, src: p.phone_source === 'cms' ? 'CMS hospital list' : 'OpenStreetMap' }];
-    // No nearby hospital with a number: an ER in the same county from the official list, same town first.
-    const er = cat === 'hospital' ? erByTown(result, a?.place.label)[0] : undefined;
-    return er ? [{ label, name: titleCase(er.name), phone: er.phone, src: 'CMS hospital list' }] : [];
+    if (cat !== 'hospital') return [];
+    // No nearby ER: one in the same county from the official list, same town first; outside the US, the nearest OSM hospital.
+    const er = erByTown(result, a?.place.label)[0];
+    if (er) return [{ label, name: titleCase(er.name), phone: er.phone, src: 'CMS hospital list' }];
+    const h = near.find((x) => x.category === cat && x.phone);
+    return h ? [{ label, name: h.name ?? label, phone: h.phone!, src: 'OpenStreetMap' }] : [];
   });
 
   return (

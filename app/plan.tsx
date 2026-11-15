@@ -162,7 +162,7 @@ export default function Plan() {
       <NearbyHelp
         lat={place.lat}
         lon={place.lon}
-        inUs={area?.data.in_us ?? false}
+        inUs={area?.data.in_us ?? place.countryCode === 'US'}
         county={area?.data.county ?? null}
         saved={places}
         onResult={(r) => saveResult('places', r)}

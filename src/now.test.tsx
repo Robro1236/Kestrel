@@ -96,3 +96,23 @@ test('Now: a saved copy shows first, then a fresh lookup replaces it', async () 
   expect(await screen.findByRole('link', { name: 'Call County Hospital, (209) 555-0100' })).toBeTruthy();
   expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('kind=places'), expect.anything());
 });
+
+// protects=Who to call names an ER, not a clinic OSM tags as a hospital; fails_when=Now takes the nearest OSM "hospital" with a phone; no_claim=the CMS list is complete
+test('Now: Hospital is an official ER, not a nearer clinic', async () => {
+  globalThis.fetch = jest.fn().mockRejectedValue(new Error('offline')) as unknown as typeof fetch;
+  jest.mocked(useLocalArea).mockReturnValue({
+    place: { lat: 0, lon: 0, label: 'Tracy, CA' }, inUs: true, area: null,
+    places: {
+      lat: 0, lon: 0, fetched_at: '2026-11-15T10:00:00Z', shelters: [],
+      places: [{ category: 'hospital', name: 'Tracy Medical Offices', phone: '+1 209-839-3200', lat: 0, lon: 0, distance_km: 1 }],
+      er_hospitals: [{ name: 'SUTTER TRACY COMMUNITY HOSPITAL', city: 'TRACY', phone: '(209) 835-1500' }],
+    },
+    household: { adults: 1, children: 0, seniors: 0, infants: 0, dogs: 0, cats: 0, medication: false, mobility: false },
+    warnings: null,
+  } as never);
+
+  await render(<Now />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Earthquake' }));
+  expect(await screen.findByRole('link', { name: 'Call Sutter Tracy Community Hospital, (209) 835-1500' })).toBeTruthy();
+  expect(screen.queryByRole('link', { name: /Tracy Medical Offices/ })).toBeNull();
+});

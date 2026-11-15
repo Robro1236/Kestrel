@@ -10,7 +10,7 @@ import { distanceKm, type Category, type ErHospital, type Place, type Shelter } 
 // lat/lon: the rounded point the lookup ran for.
 // source is missing on copies saved before the Photon fallback; those came from Overpass.
 // er_hospitals: the county's hospitals with an emergency room (CMS); null when that lookup failed, missing on older copies.
-export type PlacesResult = { lat: number; lon: number; places: Place[]; source?: 'overpass' | 'photon'; shelters: Shelter[]; er_hospitals?: ErHospital[] | null; fetched_at: string; stale?: boolean };
+export type PlacesResult = { lat: number; lon: number; places: Place[]; source?: 'overpass' | 'photon'; shelters: Shelter[] | null; er_hospitals?: ErHospital[] | null; fetched_at: string; stale?: boolean };
 
 // The county's ER hospitals, the ones in the place's own town first ("Tracy, California" -> TRACY).
 export function erByTown(r: PlacesResult | null | undefined, label: string | undefined): ErHospital[] {
@@ -159,7 +159,8 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
           <View style={styles.section}>
             <Text accessibilityRole="header" style={ui.cardTitle}>Shelters</Text>
             <Text style={styles.note}>Open during active disasters only.</Text>
-            {result?.shelters.map((s, i) => (
+            {result && !result.shelters ? <Text style={styles.note}>Couldn't reach FEMA's shelter list right now.</Text> : null}
+            {result?.shelters?.map((s, i) => (
               <View key={i} style={styles.row}>
                 <Text style={styles.name}>
                   {s.name ?? 'Shelter'}
@@ -171,7 +172,7 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
               </View>
             ))}
             <Link url={LINKS.redCrossShelters}>Red Cross: find an open shelter</Link>
-            {result ? (
+            {result?.shelters ? (
               <Text style={styles.source}>
                 Source: FEMA open shelters, fetched {localDay(result.fetched_at)}.
                 {result.stale ? ' The live source is down; these shelters may have closed since.' : ''}

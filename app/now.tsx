@@ -28,13 +28,15 @@ export default function NowScreen() {
     load<string[]>('checked').then((c) => setChecked(c ?? []));
   }, []);
 
-  // Phone numbers: the copy saved by Nearby help if it is for this place, else one fresh lookup.
+  // Phone numbers: the saved copy for this place shows at once (and offline), and a fresh lookup replaces it,
+  // as Nearby help does: a saved copy can be old or a stale fallback without ER numbers.
   const lat = a?.place.lat;
   const lon = a?.place.lon;
   const saved = a?.places && lat != null && lon != null && distanceKm(a.places.lat, a.places.lon, lat, lon) <= 1 ? a.places : null;
   useEffect(() => {
-    if (lat == null || lon == null || saved) return;
+    if (lat == null || lon == null) return;
     let live = true;
+    setPlaces(null); // a fresh result for the previous place must not stand in for this one
     fetchNearby(lat, lon).then(
       (r) => {
         if (live) setPlaces(r);
@@ -45,7 +47,7 @@ export default function NowScreen() {
     return () => {
       live = false;
     };
-  }, [lat, lon, saved]);
+  }, [lat, lon]);
 
   if (!a) return <Loading />;
   const auto = a.warnings ? pickFromAlerts(a.warnings.alerts) : null;
@@ -54,7 +56,7 @@ export default function NowScreen() {
   const kit = buildKit(a.household, a.area?.hazards ?? []).filter((i) => !i.tip);
   const grab = e ? e.kit.flatMap((id) => kit.filter((i) => i.id === id)) : [];
   const got = grab.filter((i) => checked.includes(i.id)).length;
-  const result = saved ?? places;
+  const result = places ?? saved;
   const near = result?.places ?? [];
   const calls = CALL.flatMap(([cat, label]) => {
     // places come sorted by distance; take the nearest one with a number.

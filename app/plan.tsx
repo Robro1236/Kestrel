@@ -2,8 +2,12 @@ import { useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Hazards } from '../src/components/Hazards';
+import { Warnings } from '../src/components/Warnings';
+import { WaterSafety } from '../src/components/WaterSafety';
 import type { ResolvedLocation } from '../src/data/location';
-import { buildKit, type Hazard, type Household, type KitItem } from '../src/kit/rules';
+import { activeOnly, fetchWarnings, type Warnings as WarningsData } from '../src/data/nws';
+import { buildKit, type Hazard, type Household, type KitItem, waterGallons } from '../src/kit/rules';
 import { load, loadResult, save, saveResult, type Saved } from '../src/storage';
 import { lookup } from '../src/supabase';
 
@@ -29,16 +33,19 @@ export default function Plan() {
   const [area, setArea] = useState<Saved<Area> | null>(null);
   const [areaFailed, setAreaFailed] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<Saved<WarningsData> | null>(null);
+  const [warningsFailed, setWarningsFailed] = useState(false);
 
   // Render from what's saved first, then refresh the area in the background.
   useEffect(() => {
     let live = true;
     (async () => {
-      const [h, l, c, a] = await Promise.all([
+      const [h, l, c, a, w] = await Promise.all([
         load<Household>('household'),
         load<ResolvedLocation>('location'),
         load<string[]>('checked'),
         loadResult<Area>('area'),
+        loadResult<WarningsData>('warnings'),
       ]);
       if (!live) return;
       if (!h || !l) return router.replace('/setup');
@@ -46,6 +53,18 @@ export default function Plan() {
       setPlace(l);
       setChecked(c ?? []);
       setArea(a);
+      // Storage keeps one warnings copy; only show it for the same point.
+      if (w && w.data.lat === l.lat && w.data.lon === l.lon) setWarnings(w);
+      // NWS only covers the US; skip the call when we already know the place is elsewhere.
+      if ((l.countryCode ?? 'US') === 'US') {
+        fetchWarnings(l.lat, l.lon).then(
+          async (fresh) => {
+            await saveResult('warnings', fresh);
+            if (live) setWarnings({ data: fresh, savedAt: new Date().toISOString() });
+          },
+          () => live && setWarningsFailed(true),
+        );
+      }
       // Counter insert (recordPlanOnce in src/storage.ts) is deferred to T8; see docs/SPEC.md.
       try {
         const fresh = await lookup<Area>('area', l.lat, l.lon);
@@ -60,7 +79,8 @@ export default function Plan() {
     };
   }, [router]);
 
-  const all = useMemo(() => (household ? buildKit(household, area?.data.hazards ?? []) : []), [household, area]);
+  const hazards = useMemo(() => area?.data.hazards ?? [], [area]);
+  const all = useMemo(() => (household ? buildKit(household, hazards) : []), [household, hazards]);
   const kit = all.filter((i) => !i.tip);
   const tips = all.filter((i) => i.tip);
   // Checkmarks are kept by id; items the household no longer needs just don't count.
@@ -81,6 +101,9 @@ export default function Plan() {
     );
   }
 
+  // Until the area lookup answers, trust the saved country (ZIPs are US); GPS has none, so try NWS.
+  const inUs = area ? area.data.in_us : (place.countryCode ?? 'US') === 'US';
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text accessibilityRole="header" style={styles.title}>Your emergency plan</Text>
@@ -89,7 +112,8 @@ export default function Plan() {
         <Text style={styles.link}>Edit household</Text>
       </Pressable>
 
-      {/* T5 <Warnings /> goes here (only if active), then T7 <AirBanner /> (only if AQI > 100). */}
+      <Warnings lat={place.lat} lon={place.lon} inUs={inUs} warnings={warnings} failed={warningsFailed} />
+      {/* T7 <AirBanner /> goes here (only if AQI > 100). */}
 
       <Text accessibilityRole="header" style={styles.heading}>Supply kit</Text>
       <Text style={styles.note}>
@@ -152,7 +176,22 @@ export default function Plan() {
         </>
       ) : null}
 
-      {/* T5 <WaterSafety />, then T5 <Hazards />, then T7 <NearbyHelp /> go here. */}
+      <WaterSafety
+        lat={place.lat}
+        lon={place.lon}
+        gallons={waterGallons(household, hazards)}
+        countryCode={place.countryCode ?? area?.data.country_code ?? null}
+        hazards={hazards}
+        activeAlerts={activeOnly(warnings?.data.alerts ?? []).map((a) => a.event)}
+      />
+      <Hazards
+        hazards={area ? area.data.hazards : null}
+        inUs={inUs}
+        county={area?.data.county}
+        fetchedAt={area?.data.fetched_at}
+        failed={areaFailed}
+      />
+      {/* T7 <NearbyHelp /> goes here. */}
     </ScrollView>
   );
 }

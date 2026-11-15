@@ -105,11 +105,12 @@ Checkmarks are stored per item `id`. Progress = checked / checklist items (tips 
 
 ### Water safety (`src/water/guidance.ts`, pure function)
 
-`waterGuidance({ gallons, countryCode, jmpPct, hazards, activeAlerts, elevationM }): WaterGuidance`
+`waterGuidance({ gallons, countryCode, hazards, activeAlerts, elevationM }): WaterGuidance` (built in T5: it looks up `jmpPct` from `jmp.json` by `countryCode` itself; `elevationM` is `null` when the Open-Meteo elevation call fails, and the boil step then says "1 minute (3 minutes above 6,500 feet)". The elevation fetch is `src/water/elevation.ts`, called once per location by `WaterSafety`.)
 
 - **Gallons needed:** taken from the kit.
 - **Baseline label:** if `jmpPct < 90`: "Tap water here may not be safe. Boil or filter before drinking." Source: WHO/UNICEF JMP, with the data year. If the country is missing from the table (66 countries are, including Australia, China and Kenya): "We don't have tap water data for this country. If you're unsure, boil or filter before drinking." `jmpPct` comes from the static `src/data/jmp.json`, shaped `{ countries: { "US": { "pct": 97.6, "year": 2024 } } }` (% population using safely managed drinking water), generated in Task 0.
-- **Disaster warning:** if flood, hurricane or earthquake is ≥ RM: "After a flood, hurricane or earthquake, treat tap water as unsafe until officials say it's clear."
+- **Disaster warning:** if flood, hurricane or earthquake is ≥ RM: "After a flood, hurricane or earthquake, your tap water may not be safe. Follow your health department's advice on boiling or treating it." (T5 changed the wording to match CDC, which says tap water "may not be" safe and to follow the health department; it does not say "until officials say it's clear".)
+- **Also shown (T5, from the same CDC page):** if cloudy, let it settle and filter through a clean cloth, paper towel or coffee filter first; "Boiling is the best way to kill germs"; let boiled water cool and store it in clean, covered containers; boiling and bleach do not remove fuel or chemicals, so use bottled water if those may be present.
 - **Active alert:** if an NWS alert's `event` contains `Flood` or `Hurricane`, the disaster warning moves to the top of the section, highlighted.
 - **Boil:** rolling boil 1 minute; **3 minutes if `elevationM > 1981`** (6,500 ft). Source: CDC.
 - **Bleach:** for clear water, 8 drops (a little less than 1/8 teaspoon) of unscented household bleach (5% to 9% sodium hypochlorite) per gallon; stir and wait at least 30 minutes. "If the water is cloudy, colored or very cold, use double." "Follow the bleach label's own instructions if it has them." Show the per-gallon amount and the total for the kit's gallons: compute in drops (8 per gallon) and convert to teaspoons at CDC's 5-gallon figure (40 drops = 1/2 tsp), so 12 gallons = 96 drops ≈ 1 1/4 tsp. Source: CDC, "How to Make Water Safe in an Emergency" (page dated Sept. 19, 2024, confirmed 2026-11-14).
@@ -127,10 +128,11 @@ Checkmarks are stored per item `id`. Progress = checked / checklist items (tips 
 - Show `event`, `headline`, `severity` and `ends` (or `expires`), plus a link to the alert.
 - No alerts: "No active warnings from the National Weather Service." Not in the US: "Live warnings are only available in the US for now."
 - Failure: "Couldn't check warnings right now." and the last saved result with its date.
+- As built (T5): `Warnings` shows a red banner only when an alert is active; otherwise the no-alerts, not-US or failure text is one plain line. Alerts whose `ends` (or `expires`) has passed are dropped, both when fetched and when a saved copy is shown (`activeOnly`, used by `Warnings` and `WaterSafety`). The NWS call is skipped when the saved location's country is known and not the US. The link goes to `https://forecast.weather.gov/MapClick.php?lat=..&lon=..` (the human page for the point, which lists the same alerts), because `@id` is raw JSON. The saved copy (`results.warnings`) carries its lat/lon and is only shown for the same point. `app/plan.tsx` fetches once per screen load and passes the result to both `Warnings` and `WaterSafety`.
 
 ### Local hazards (from `lookup?kind=area`)
 
-List hazards rated ≥ RM with their FEMA NRI rating, plus the text "Source: FEMA National Risk Index (county level)". Outside the US: "Hazard data is only available in the US for now."
+List hazards rated ≥ RM with their FEMA NRI rating, plus the text "Source: FEMA National Risk Index (county level)". Outside the US: "Hazard data is only available in the US for now." As built (T5): sorted worst first; with none ≥ RM it says "No hazards rated Relatively Moderate or higher for {county}." Each hazard row is a 44px button that opens three "what to do" steps from that hazard's Ready.gov page (`src/kit/hazardAdvice.ts`), a "Read more on Ready.gov" link and the page's source line; one open at a time.
 
 ### Nearby help (from `lookup?kind=places`, plus static links)
 
@@ -202,7 +204,7 @@ Order rationale: T0 first because every data section depends on which endpoints 
 | 2 | T3 | Supabase project, migration, `lookup` skeleton + `kind=area` | 3h / 1h | `supabase/migrations/*`, `supabase/functions/lookup/index.ts`, `.../area.ts` |
 | 2 | T6 | Vercel project, `vercel.json`, env vars, README "How to run" for judges | 1.5h / 30m | `vercel.json`, `README.md` |
 | 3 | T4 | Plan screen shell: sections, checklist, progress, storage (counter deferred to T8) | 3h / 1h | `app/plan.tsx`, `app/index.tsx`, `src/storage.ts`; also touched `src/kit/rules.ts` + test (tips, info text, infant counts), `app/setup.tsx` (replace, not push), `src/supabase.ts` (lookup client) |
-| 3 | T5 | NWS warnings, hazards section, `waterGuidance` + tests | 3h / 1h | `src/data/nws.ts`, `src/water/*`, `src/components/Hazards.tsx`, `Warnings.tsx`, `WaterSafety.tsx` |
+| 3 | T5 | NWS warnings, hazards section, `waterGuidance` + tests | 3h / 1h | `src/data/nws.ts`, `src/water/*`, `src/components/Hazards.tsx`, `Warnings.tsx`, `WaterSafety.tsx`; also placed them in `app/plan.tsx` (asked for by the task owner) |
 | 3 | T7 | `lookup?kind=places` (Overpass + shelters), Nearby help section, air quality banner + tests | 4h / 1.5h | `supabase/functions/lookup/places.ts`, `src/data/airQuality.ts`, `src/components/NearbyHelp.tsx`, `AirBanner.tsx` |
 | 4 | T8 | Integrate, turn on the "Households prepared" counter (home `prepared_count()` + `recordPlanOnce` on the plan screen), `/qa` on the Vercel link, test on real phones, fix, submit | 3h / 1h | any |
 

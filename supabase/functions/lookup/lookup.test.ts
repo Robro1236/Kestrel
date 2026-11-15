@@ -321,3 +321,22 @@ test('handler: a kind can set freshness from the cached payload', async () => {
   expect(retried).toMatchObject({ source: 'overpass', stale: false });
   expect(kinds.places.fetch).toHaveBeenCalledTimes(1);
 });
+
+// protects=Nearby help gets each place's phone number from its OpenStreetMap tags; fails_when=the phone tag is dropped, contact:phone is ignored, a ';' list is shown as one number, or an untagged place gets a made-up number; no_claim=the numbers mappers entered are current
+test('places: keeps the first OpenStreetMap phone number, null when untagged', async () => {
+  const place = (lat: number, tags: Record<string, string>) => ({ type: 'node', lat, lon: -121.54, tags: { amenity: 'hospital', ...tags } });
+  const result = await fetchPlaces(
+    37.78,
+    -121.54,
+    fakePlaces({
+      elements: [
+        place(37.79, { name: 'A', phone: '+1 209-555-0100' }),
+        place(37.8, { name: 'B', 'contact:phone': '(209) 555-0101' }),
+        place(37.81, { name: 'C', phone: '+1 209 555 0102; +1 209 555 0199' }),
+      ],
+    }),
+  );
+  expect(result.places.map((p) => p.phone)).toEqual(['+1 209-555-0100', '(209) 555-0101', '+1 209 555 0102']);
+  const none = await fetchPlaces(37.78, -121.54, fakePlaces({ elements: [place(37.79, { name: 'D' })] }));
+  expect(none.places[0]).toHaveProperty('phone', null);
+});

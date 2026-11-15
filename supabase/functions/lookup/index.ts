@@ -29,6 +29,7 @@ Deno.serve(
   makeHandler(cache, {
     area: { ttlDays: 30, fetch: fetchArea },
     // Photon's shorter list is the Overpass-down fallback, so retry Overpass after a day, not a week.
-    places: { ttlDays: (p) => (p.source === 'photon' ? 1 : 7), fetch: fetchPlaces },
+    // Rows cached before places carried a phone field are refetched once.
+    places: { ttlDays: (p) => (!(p.places as object[]).every((x) => 'phone' in x) ? 0 : p.source === 'photon' ? 1 : 7), fetch: fetchPlaces },
   }),
 );

@@ -7,7 +7,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: jest.fn(), canGoBack: () => true }), // not a fresh launch, so no redirect
   useFocusEffect: (cb: () => void) => require('react').useEffect(cb, [cb]),
 }));
 jest.mock('./supabase', () => ({ preparedCount: jest.fn() }));

@@ -6,6 +6,7 @@ import { Icon } from '../src/components/Icon';
 import { Loading } from '../src/components/Loading';
 import { erByTown, fetchNearby, telUrl, titleCase, type PlacesResult } from '../src/components/NearbyHelp';
 import { PageHeader } from '../src/components/PageHeader';
+import { Step } from '../src/components/Steps';
 import { Tap } from '../src/components/Tap';
 import { localDay } from '../src/date';
 import { EMERGENCIES, pickFromAlerts, STEPS_CHECKED } from '../src/kit/emergencies';
@@ -100,10 +101,9 @@ export default function NowScreen() {
           <View style={ui.card}>
             <Text accessibilityRole="header" style={ui.cardTitle}>Do this now</Text>
             {e.steps.map((s, i) => (
-              <View key={s} style={styles.step}>
-                <Text style={styles.num}>{i + 1}</Text>
-                <Text style={[styles.text, styles.grow]}>{s}</Text>
-              </View>
+              <Step key={s} n={i + 1}>
+                <Text style={styles.text}>{s}</Text>
+              </Step>
             ))}
             <Tap accessibilityRole="link" onPress={() => Linking.openURL(e.url)} style={styles.linkHit}>
               <Text style={styles.source}>Source: Ready.gov, {e.page}, checked {STEPS_CHECKED}.</Text>
@@ -165,8 +165,6 @@ const styles = StyleSheet.create({
   why: { fontFamily: fonts.body, fontSize: 14, color: colors.muted, paddingHorizontal: 4 },
   text: { fontFamily: fonts.body, fontSize: 15, color: colors.text },
   grow: { flex: 1 },
-  step: { flexDirection: 'row', gap: 10 },
-  num: { fontFamily: fonts.bold, fontSize: 15, color: colors.primary, width: 16, fontVariant: ['tabular-nums'] },
   titleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' },
   count: { fontFamily: fonts.semi, fontSize: 13, color: colors.muted, fontVariant: ['tabular-nums'] },
   item: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 32 },

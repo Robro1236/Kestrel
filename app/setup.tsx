@@ -34,6 +34,7 @@ export default function Setup() {
   const [household, setHousehold] = useState(DEFAULT_HOUSEHOLD);
   const [location, setLocation] = useState<ResolvedLocation | null>(null);
   const [query, setQuery] = useState('');
+  const [focused, setFocused] = useState(false);
   // Each error shows next to the thing that caused it: the location button, the place field, or the household.
   const [error, setError] = useState<{ at: 'gps' | 'place' | 'who'; text: string } | null>(null);
   const scroll = useRef<ScrollViewInstance>(null);
@@ -167,7 +168,10 @@ export default function Setup() {
         accessibilityLabel="ZIP code or city"
         placeholder="or type a US ZIP code or a city"
         style={styles.input}
-        value={query}
+        // The chosen place shows in the box until it's tapped; it is display only, so Build never re-resolves the label.
+        value={focused || query ? query : location?.label ?? ''}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         onChangeText={setQuery}
         role="combobox"
         aria-expanded={open}
@@ -202,7 +206,6 @@ export default function Setup() {
         </View>
       ) : null}
       {errorAt('place')}
-      {location && !query.trim() ? <Text style={styles.note}>Using: {location.label}</Text> : null}
       </View>
 
       <View style={ui.card}>
@@ -252,7 +255,6 @@ const styles = StyleSheet.create({
   optionText: { flex: 1 },
   optionName: { fontFamily: fonts.semi, fontSize: 16, color: colors.ink },
   optionPlace: { fontFamily: fonts.body, fontSize: 14, color: colors.muted },
-  note: { fontFamily: fonts.body, fontSize: 14, color: colors.muted },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
   label: { fontFamily: fonts.body, flex: 1, fontSize: 16, color: colors.text },
   stepper: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },

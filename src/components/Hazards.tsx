@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from './Icon';
+import { Step } from './Steps';
 import { colors, fonts, ui } from '../theme';
 
 import { HAZARD_ADVICE } from '../kit/hazardAdvice';
@@ -73,7 +74,9 @@ export function Hazards({ hazards, inUs, county, fetchedAt, failed }: Props) {
           {advice && expanded ? (
             <View style={styles.advice}>
               {advice.steps.map((s) => (
-                <Text key={s} style={styles.step}>• {s}</Text>
+                <Step key={s}>
+                  <Text style={styles.step}>{s}</Text>
+                </Step>
               ))}
               <Pressable
                 accessibilityRole="link"

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Tap } from './Tap';
 import { colors, fonts, ui } from '../theme';
 
 import { fetchJson } from '../data/airQuality';
@@ -43,7 +44,7 @@ export const telUrl = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
 const directions = (lat: number, lon: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
 
 // Uncached Overpass takes 25-34 s; the function gives it 35 s, then falls back to Photon.
-export async function fetchNearby(lat: number, lon: number): Promise<PlacesResult> {
+async function fetchOnce(lat: number, lon: number): Promise<PlacesResult> {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) throw new Error('Supabase is not configured');
@@ -51,6 +52,22 @@ export async function fetchNearby(lat: number, lon: number): Promise<PlacesResul
     apikey: key,
     Authorization: `Bearer ${key}`,
   });
+}
+
+// Now and Nearby help both ask for the same point (Now stays mounted under Help). Two lookups of one uncached cell at once
+// get rate limited upstream and the function answers 502 in ~4 s, so they share one request.
+const inFlight = new Map<string, Promise<PlacesResult>>();
+export function fetchNearby(lat: number, lon: number): Promise<PlacesResult> {
+  const k = `${lat},${lon}`;
+  let p = inFlight.get(k);
+  if (!p) {
+    // A 5xx is usually that rate limit and clears in seconds: one retry, never more (no polling). Offline errors don't retry.
+    p = fetchOnce(lat, lon)
+      .catch((e: Error) => (/HTTP 5\d\d/.test(e.message) ? new Promise((r) => setTimeout(r, 3000)).then(() => fetchOnce(lat, lon)) : Promise.reject(e)))
+      .finally(() => inFlight.delete(k));
+    inFlight.set(k, p);
+  }
+  return p;
 }
 
 type Props = {
@@ -73,6 +90,7 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
   const savedHere = saved && distanceKm(saved.lat, saved.lon, lat, lon) <= 1 ? saved : null;
   const result = fresh ?? savedHere;
   const [state, setState] = useState<'loading' | 'done' | 'failed'>('loading');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -90,7 +108,7 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
       live = false;
     };
     // onResult is left out on purpose: a new callback each render must not refetch.
-  }, [lat, lon]);
+  }, [lat, lon, attempt]);
 
   const countyText = county ? `${county} emergency services` : 'your county emergency services';
 
@@ -112,6 +130,9 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
           <Text style={styles.note}>
             Couldn't load nearby places right now.{result ? ` Showing what we found on ${localDay(result.fetched_at)}.` : ''}
           </Text>
+          <Tap accessibilityRole="button" onPress={() => setAttempt((n) => n + 1)} style={styles.linkHit}>
+            <Text style={styles.link}>Try again</Text>
+          </Tap>
         </View>
       ) : null}
 

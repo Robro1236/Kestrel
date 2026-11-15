@@ -2,16 +2,20 @@ import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Loading } from '../src/components/Loading';
 import { PageHeader } from '../src/components/PageHeader';
+import type { IconName } from '../src/components/Icon';
+import { IconBadge, Step } from '../src/components/Steps';
 import { Tap } from '../src/components/Tap';
 import { useLocalArea } from '../src/useLocalArea';
 import { colors, fonts, ui } from '../src/theme';
 
-type Topic = { title: string; lines: string[]; source: string; link?: [string, string] };
+// ordered: the lines are a sequence, so they get numbers.
+type Topic = { title: string; icon: IconName; ordered?: boolean; lines: string[]; source: string; link?: [string, string] };
 
 // Fixed official checklists for the first days after a disaster. No live data, so it works offline.
 const TOPICS: Topic[] = [
   {
     title: 'Stay safe first',
+    icon: 'shield',
     lines: [
       'Run generators, grills and camp stoves outdoors only, at least 20 feet from doors and windows. Carbon monoxide has no smell.',
       'Stay out of floodwater. It can hide live wires and sewage, and 6 inches of moving water can knock you down.',
@@ -21,6 +25,8 @@ const TOPICS: Topic[] = [
   },
   {
     title: 'Photograph damage before you clean up',
+    icon: 'camera',
+    ordered: true,
     lines: [
       'Take photos and video of every room and all damage before you move or throw anything out.',
       'Keep receipts for repairs, hotels and supplies.',
@@ -30,6 +36,7 @@ const TOPICS: Topic[] = [
   },
   {
     title: 'Food after a power outage',
+    icon: 'snow',
     lines: [
       'A closed fridge keeps food safe for about 4 hours. A full freezer holds for 48 hours, a half-full one for 24.',
       'Throw out meat, fish, milk, eggs and leftovers that sat above 40°F for more than 2 hours.',
@@ -39,6 +46,7 @@ const TOPICS: Topic[] = [
   },
   {
     title: 'When tap water is safe again',
+    icon: 'drop',
     lines: [
       'Use bottled or treated water until your water utility or local officials say tap water is safe.',
       'Follow any boil-water notice until it is lifted, then run cold taps for a few minutes.',
@@ -50,6 +58,7 @@ const TOPICS: Topic[] = [
 
 const AID: Topic = {
   title: 'Apply for disaster aid',
+  icon: 'doc',
   lines: [
     'If your county is part of a federal disaster declaration, you can apply to FEMA for help with housing, repairs and other needs.',
     'Apply online or call 1-800-621-3362. Have your address, insurance details and bank details ready.',
@@ -68,9 +77,14 @@ export default function AfterScreen() {
       <PageHeader title="After a disaster" place={a.place.label} />
       {topics.map((t) => (
         <View key={t.title} style={ui.card}>
-          <Text accessibilityRole="header" style={ui.cardTitle}>{t.title}</Text>
-          {t.lines.map((l) => (
-            <Text key={l} style={styles.text}>{l}</Text>
+          <View style={styles.head}>
+            <IconBadge name={t.icon} />
+            <Text accessibilityRole="header" style={[ui.cardTitle, styles.grow]}>{t.title}</Text>
+          </View>
+          {t.lines.map((l, i) => (
+            <Step key={l} n={t.ordered ? i + 1 : undefined}>
+              <Text style={styles.text}>{l}</Text>
+            </Step>
           ))}
           {t.link ? (
             <Tap accessibilityRole="link" onPress={() => Linking.openURL(t.link![1])} style={styles.linkHit}>
@@ -85,6 +99,8 @@ export default function AfterScreen() {
 }
 
 const styles = StyleSheet.create({
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  grow: { flex: 1 },
   text: { fontFamily: fonts.body, fontSize: 15, color: colors.text },
   linkHit: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   link: { fontFamily: fonts.semi, color: colors.primary, textDecorationLine: 'underline', fontSize: 15 },

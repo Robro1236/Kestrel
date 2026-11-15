@@ -15,7 +15,7 @@ jest.mock('./supabase', () => ({
 
 const AsyncStorage = require('@react-native-async-storage/async-storage');
 
-// protects=the plan screen shows the kit (kit cards fold and unfold, and fold once complete), the Nearby help screen loads, and a US user keeps the US help links when the area lookup fails; fails_when=help.tsx drops NearbyHelp, or inUs comes only from the area result; no_claim=the live lookup returns in_us correctly
+// protects=the plan screen shows the kit (kit cards fold and unfold, and show a big check then fold once complete), the Nearby help screen loads, and a US user keeps the US help links when the area lookup fails; fails_when=help.tsx drops NearbyHelp, or inUs comes only from the area result; no_claim=the live lookup returns in_us correctly
 test('plan: offline US user still gets the kit and US help links', async () => {
   globalThis.fetch = jest.fn().mockRejectedValue(new TypeError('Network request failed')) as unknown as typeof fetch;
   await AsyncStorage.setItem('household', JSON.stringify({ adults: 2, seniors: 0, children: 0, infants: 0, dogs: 0, cats: 0, medication: false, mobility: false }));
@@ -41,8 +41,10 @@ test('plan: offline US user still gets the kit and US help links', async () => {
   for (const name of ['Copies of IDs and insurance in a waterproof bag', 'Cash', 'Local paper map']) {
     await fireEvent.press(screen.getByRole('checkbox', { name }));
   }
+  expect(screen.getByTestId('kit-done', { includeHiddenElements: true })).toBeTruthy(); // the big check shows over the finished card
   await waitFor(() => expect(screen.queryByText('Cash')).toBeNull(), { timeout: 3000 }); // after a short pause and the slide
   expect(screen.getByRole('button', { name: 'Papers and money, 3 of 3' })).toBeTruthy();
+  await waitFor(() => expect(screen.queryByTestId('kit-done', { includeHiddenElements: true })).toBeNull(), { timeout: 3000 }); // and goes once it has folded
 
   await render(<Help />);
   await screen.findByText('Nearby help');

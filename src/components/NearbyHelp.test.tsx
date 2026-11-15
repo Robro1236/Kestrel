@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { Linking } from 'react-native';
 
-import { NearbyHelp, titleCase, type PlacesResult } from './NearbyHelp';
+import { fetchNearby, NearbyHelp, titleCase, type PlacesResult } from './NearbyHelp';
 
 const result = (name: string, lat = 37.78, lon = -121.54): PlacesResult => ({
   lat,
@@ -86,4 +86,20 @@ test('NearbyHelp: phone numbers are tappable call links', async () => {
   expect(screen.getByText('In an emergency call 911. These are office lines.')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Call 2-1-1'));
   expect(open).toHaveBeenLastCalledWith('tel:211');
+});
+
+// protects=Nearby help loading after Now asked for the same new place; fails_when=two screens send two lookups for one cell (upstream rate-limits the second, 502), or a 502 is shown without one retry; no_claim=the retry always lands after the rate limit clears
+test('fetchNearby: concurrent calls share one request, and a 502 retries once', async () => {
+  jest.useFakeTimers();
+  const ok = { ok: true, json: async () => result('Tracy Pharmacy') };
+  globalThis.fetch = jest.fn()
+    .mockResolvedValueOnce({ ok: false, status: 502 })
+    .mockResolvedValueOnce(ok) as unknown as typeof fetch;
+  const both = Promise.all([fetchNearby(1, 2), fetchNearby(1, 2)]);
+  await jest.advanceTimersByTimeAsync(3000);
+  const [a, b] = await both;
+  expect(a.places[0].name).toBe('Tracy Pharmacy');
+  expect(b).toBe(a);
+  expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  jest.useRealTimers();
 });

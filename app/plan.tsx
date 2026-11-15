@@ -15,6 +15,7 @@ import { WaterSystem } from '../src/components/WaterSystem';
 import { localDay } from '../src/date';
 import { airTier } from '../src/data/airQuality';
 import type { ResolvedLocation } from '../src/data/location';
+import { pickFromAlerts } from '../src/kit/emergencies';
 import { activeOnly, fetchWarnings, type Warnings as WarningsData } from '../src/data/nws';
 import { buildKit, KIT_GROUPS, type Hazard, type Household, type KitItem, waterGallons } from '../src/kit/rules';
 import { load, loadResult, recordPlanOnce, save, saveResult, type Saved } from '../src/storage';
@@ -133,6 +134,7 @@ export default function Plan() {
   const inUs = area ? area.data.in_us : (place.countryCode ?? 'US') === 'US';
   // Bad air goes near the top with the warnings; normal air is a footnote card at the bottom.
   const airUrgent = !!air && !!airTier(air.aqi);
+  const now = pickFromAlerts(warnings?.data.alerts ?? []);
   const alerts = activeOnly(warnings?.data.alerts ?? []).map((a) => a.event);
 
   return (
@@ -167,6 +169,14 @@ export default function Plan() {
           <FamilyPlanLink style={styles.chip} textStyle={styles.chipText} />
         </View>
       </View>
+      {/* During an emergency: what to do now, sized to the active warning if there is one. */}
+      <Tap accessibilityRole="link" onPress={() => router.navigate('/now')} style={[ui.card, styles.nowCard]}>
+        <View style={styles.grow}>
+          <Text style={styles.nowTitle}>{now ? `${now.alert.event}: what to do now` : 'Something happening now?'}</Text>
+          <Text style={styles.note}>Steps, what to grab from your kit, and who to call.</Text>
+        </View>
+        <Icon name="chevronRight" size={20} color={colors.primary} />
+      </Tap>
       <KitReminders inUs={inUs} />
 
       <Warnings lat={place.lat} lon={place.lon} inUs={inUs} warnings={warnings} failed={warningsFailed} />
@@ -347,6 +357,9 @@ const styles = StyleSheet.create({
   count: { fontFamily: fonts.bold, fontSize: 13, fontVariant: ['tabular-nums'], color: colors.primary, backgroundColor: colors.primarySoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: 'hidden' },
   note: { fontFamily: fonts.body, fontSize: 15, color: colors.muted },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  nowCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  grow: { flex: 1 },
+  nowTitle: { fontFamily: fonts.semi, fontSize: 17, color: colors.ink },
   chip: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.primarySoft },
   chipText: { fontFamily: fonts.bold, color: colors.primary, fontSize: 14 },
   track: { height: 10, borderRadius: 5, backgroundColor: colors.track, overflow: 'hidden' },

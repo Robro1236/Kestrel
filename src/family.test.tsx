@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import Family, { cardHtml, planText } from '../app/family';
+import Family, { cardHtml, EMPTY_PLAN, planText } from '../app/family';
 import { FamilyPlanLink } from './components/FamilyPlanLink';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -30,11 +30,14 @@ test('family: typed plan is saved, reloaded, and shared without empty fields', a
 
 // protects=the printed web card escapes typed text and keeps empty fields as blank lines; fails_when=typed HTML runs in the print frame, or an empty field is dropped from the paper card; no_claim=the browser's print dialog opens
 test('family: print page escapes typed text and keeps blank fields', () => {
-  const html = cardHtml({ nearHome: '<img src=x onerror=alert(1)>', outsideArea: '', contactName: '', contactPhone: '', contacts: 'Mom 555\nDad 556', zone: '' });
+  const html = cardHtml({ ...EMPTY_PLAN, nearHome: '<img src=x onerror=alert(1)>', contacts: 'Mom 555\nDad 556', medical: 'Ana: peanut allergy' });
   expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
   expect(html).not.toContain('<img');
   expect(html).toContain('Mom 555<br>Dad 556');
   expect(html).toContain('<dt>Evacuation zone</dt><dd></dd>');
+  expect(html).toContain('<dt>Medical needs</dt><dd>Ana: peanut allergy</dd>');
+  expect(html).toContain('<dt>Utility shutoffs</dt><dd></dd>');
+  expect(html).toContain('Poison Help: 1-800-222-1222');
 });
 
 // protects=the plan screen's entry point opens the family plan card; fails_when=the link is missing its name or role, or goes anywhere but /family; no_claim=the link's position or look on the plan screen

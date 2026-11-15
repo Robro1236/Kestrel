@@ -17,6 +17,7 @@ export default function HelpScreen() {
         lat={a.place.lat}
         lon={a.place.lon}
         inUs={a.inUs}
+        label={a.place.label}
         county={a.area?.county ?? null}
         saved={a.places}
         onResult={(r) => saveResult('places', r)}

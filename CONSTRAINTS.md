@@ -21,11 +21,11 @@ Checked by `node scripts/floor-guard.mjs` (diff against `origin/main`, including
 | Floor | Zero findings | `node scripts/floor-guard.mjs` | every edit (`check:fast`) | yes |
 | Tests | All pass, count must not fall (28 today) | `jest` | task end (`check:task`) | yes |
 | Dependency vulns | Nothing at high or above in shipped deps | `npm audit --omit=dev --audit-level=high` | before deploy (`check:full`) | warn during the hackathon |
-| Web bundle | Gzipped JS ≤ 450 kB | `node scripts/bundle-size.mjs dist 450` | before deploy (`check:full`) | yes |
+| Web bundle | Gzipped JS ≤ 500 kB | `node scripts/bundle-size.mjs dist 500` | before deploy (`check:full`) | yes |
 | Load | 50 concurrent users for 20 s: p95 ≤ 1500 ms, 0 failed requests | `npm run load` | before the demo, and after any change to `supabase/` | yes |
 
 Why these numbers:
-- **Bundle 450 kB**: we're at 375 kB today. On a slow phone connection (~1.6 Mbps, Lighthouse's "slow 4G") 450 kB is about 2–3 s of download, which is the most a judge clicking a link will sit through. It also sets the hosting cost: every visit pulls this.
+- **Bundle 500 kB**: raised from 450 kB on 2026-11-15 by team choice, to keep the full supabase-js client (~65 kB of it) for later auth or realtime work. On a slow phone connection (~1.6 Mbps, Lighthouse's "slow 4G") 500 kB is about 2.5–3 s of download, which is the most a judge clicking a link will sit through. It also sets the hosting cost: every visit pulls this.
 - **Load 50 users / p95 1500 ms**: a Rotary demo or a club sharing the link in a group chat means dozens of people opening it in the same minute, not thousands. 50 concurrent loops ≈ a few hundred requests a second, well past that. 1500 ms because the area lookup is one tap behind a loading state; past that it feels broken.
 - **Tests must not fall**: a lower count means a test was deleted, which the floor also catches.
 

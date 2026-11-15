@@ -175,7 +175,7 @@ async function shelters(lat: number, lon: number, f: Fetch): Promise<Shelter[]> 
 }
 
 // Official hospital list: CMS Hospital General Information (Medicare-certified hospitals), filtered to ones with an emergency department.
-// It has no coordinates, so it is matched by county (from the FCC, as area.ts does) and by name to the OSM places.
+// It has no coordinates, so it is found by county (from the FCC, as area.ts does) and by name to the OSM places.
 const CMS_URL = 'https://data.cms.gov/provider-data/api/1/datastore/query/xubh-q36u/0';
 export type ErHospital = { name: string; address: string; city: string; phone: string };
 
@@ -189,7 +189,7 @@ async function countyAt(lat: number, lon: number, f: Fetch): Promise<County | nu
   return typeof c?.county_name === 'string' && typeof c?.state_code === 'string' ? { name: countyName(c.county_name), state: c.state_code } : null;
 }
 
-async function cmsErs(c: County, f: Fetch): Promise<ErHospital[]> {
+async function cmsErs(c: County, f: Fetch): Promise<(ErHospital & { zip: string; state: string })[]> {
   const params = new URLSearchParams({
     'conditions[0][property]': 'countyparish',
     'conditions[0][value]': c.name,
@@ -200,7 +200,28 @@ async function cmsErs(c: County, f: Fetch): Promise<ErHospital[]> {
   const body = await getJson(f, `${CMS_URL}?${params}`, {}, 10_000);
   return (body.results ?? [])
     .filter((r: any) => r.emergency_services === 'Yes' && r.telephone_number && r.facility_name)
-    .map((r: any) => ({ name: r.facility_name, address: r.address ?? '', city: r.citytown ?? '', phone: r.telephone_number }));
+    .map((r: any) => ({ name: r.facility_name, address: r.address ?? '', city: r.citytown ?? '', phone: r.telephone_number, zip: r.zip_code ?? '', state: c.state }));
+}
+
+// CMS has street addresses but no coordinates; the US Census geocoder places them. null when it can't, so that hospital sorts last.
+async function geocode(h: { address: string; city: string; state: string; zip: string }, f: Fetch): Promise<[number, number] | null> {
+  try {
+    const q = new URLSearchParams({ address: `${h.address}, ${h.city}, ${h.state} ${h.zip}`, benchmark: 'Public_AR_Current', format: 'json' });
+    const c = (await getJson(f, `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?${q}`, {}, 10_000)).result?.addressMatches?.[0]?.coordinates;
+    return typeof c?.x === 'number' && typeof c?.y === 'number' ? [c.y, c.x] : null;
+  } catch {
+    return null;
+  }
+}
+
+// Nearest first; hospitals the geocoder can't place keep their order at the end.
+async function byDistance(lat: number, lon: number, list: Awaited<ReturnType<typeof cmsErs>>, f: Fetch): Promise<ErHospital[]> {
+  const at = await Promise.all(list.map((h) => geocode(h, f)));
+  const d = at.map((p) => (p ? distanceKm(lat, lon, p[0], p[1]) : Infinity));
+  return list
+    .map((h, i) => ({ h, d: d[i], i }))
+    .sort((a, b) => a.d - b.d || a.i - b.i)
+    .map(({ h }) => ({ name: h.name, address: h.address, city: h.city, phone: h.phone }));
 }
 
 // About 25 km out in each direction: the nearest ER can be over the county line (Yuba City's is in the next county).
@@ -219,7 +240,7 @@ async function erHospitals(lat: number, lon: number, f: Fetch): Promise<{ hospit
       if (c && !counties.some((x) => x.name === c.name && x.state === c.state)) counties.push(c);
     }
     const [mine, ...rest] = await Promise.all(counties.map((c, i) => (i === 0 ? cmsErs(c, f) : cmsErs(c, f).catch(() => []))));
-    return { hospitals: [...mine, ...rest.flat()], counties: counties.map((c) => `${c.name}, ${c.state}`) };
+    return { hospitals: await byDistance(lat, lon, [...mine, ...rest.flat()], f), counties: counties.map((c) => `${c.name}, ${c.state}`) };
   } catch (e) {
     console.error('CMS hospitals failed', e);
     return { hospitals: null, counties: [] };
@@ -252,5 +273,5 @@ export async function fetchPlaces(lat: number, lon: number, f: Fetch = fetch) {
     return m ? { ...pl, phone: m.phone, phone_source: 'cms' as const } : pl;
   });
   // lat/lon are the rounded request point, so the app can tell which location a saved copy belongs to.
-  return { lat, lon, places, source: p.source, shelters: s, er_hospitals: er, er_counties: cms.counties };
+  return { lat, lon, places, source: p.source, shelters: s, er_hospitals: er, er_counties: cms.counties, er_order: 'distance' };
 }

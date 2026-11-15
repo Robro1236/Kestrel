@@ -372,7 +372,7 @@ test('places: CMS emergency-room hospitals fill in hospital numbers', async () =
   expect(down.er_hospitals).toBeNull();
 });
 
-// protects=a town whose own county has no ER (Yuba City, Sutter County) still gets the ER over the county line, own county listed first, and a failing neighbor lookup is skipped; fails_when=only the own county is searched, a county is queried twice, or one neighbor's outage drops the whole list; no_claim=four points ~25 km out catch every neighboring county
+// protects=a town whose own county has no ER (Yuba City, Sutter County) still gets the ER over the county line, nearest first, and a failing neighbor lookup is skipped; fails_when=only the own county is searched, a county is queried twice, a far ER is listed before a near one, or one neighbor's outage drops the whole list; no_claim=four points ~25 km out catch every neighboring county
 test('places: ERs in neighboring counties are included', async () => {
   const er = (name: string, city: string) => ({ facility_name: name, citytown: city, telephone_number: '(530) 555-0100', emergency_services: 'Yes' });
   const cms: Record<string, object[]> = { SUTTER: [{ ...er('SUTTER SURGICAL HOSPITAL', 'YUBA CITY'), emergency_services: 'No' }], YUBA: [er('ADVENTIST RIDEOUT', 'MARYSVILLE')], BUTTE: [er('OROVILLE HOSPITAL', 'OROVILLE')] };
@@ -389,10 +389,17 @@ test('places: ERs in neighboring counties are included', async () => {
       cmsCalls.push(county);
       return ok({ results: cms[county] ?? [] });
     }
+    // Census geocoder: Marysville is ~3 km away, Oroville ~40 km.
+    if (url.host === 'geocoding.geo.census.gov') {
+      const x = url.searchParams.get('address')!.includes('MARYSVILLE') ? { x: -121.595, y: 39.139 } : { x: -121.55, y: 39.5 };
+      return ok({ result: { addressMatches: [{ coordinates: x }] } });
+    }
     return fakePlaces({ elements: [] })(input);
   }) as typeof fetch;
   const r = await fetchPlaces(39.14, -121.62, up);
   expect(cmsCalls.sort()).toEqual(['BUTTE', 'SUTTER', 'YUBA']);
   expect(r.er_counties[0]).toBe('SUTTER, CA');
+  // Butte's point is sampled before Yuba's, so without sorting Oroville would come first.
+  expect(r.er_hospitals?.map((h) => h.city)).toEqual(['MARYSVILLE', 'OROVILLE']);
   expect(r.er_hospitals?.map((h) => h.city).sort()).toEqual(['MARYSVILLE', 'OROVILLE']);
 });

@@ -29,9 +29,9 @@ Deno.serve(
   makeHandler(cache, {
     area: { ttlDays: 30, fetch: fetchArea },
     // Photon's shorter list is the Overpass-down fallback, so retry Overpass after a day, not a week.
-    // Rows cached before places carried phones or neighbor-county CMS hospitals are refetched once; a failed CMS lookup (null) is retried after a day.
+    // Rows cached before places carried phones or distance-sorted CMS hospitals are refetched once; a failed CMS lookup (null) is retried after a day.
     places: {
-      ttlDays: (p) => (!('er_counties' in p) || !(p.places as object[]).every((x) => 'phone' in x) ? 0 : p.source === 'photon' || p.er_hospitals === null ? 1 : 7),
+      ttlDays: (p) => (p.er_order !== 'distance' || !(p.places as object[]).every((x) => 'phone' in x) ? 0 : p.source === 'photon' || p.er_hospitals === null ? 1 : 7),
       fetch: fetchPlaces,
     },
   }),

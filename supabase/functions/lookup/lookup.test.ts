@@ -1,5 +1,6 @@
 /** @jest-environment node */
 import { fetchArea, HAZARD_FIELDS } from './area';
+import { fetchPlaces } from './places';
 import { makeHandler, type Cache, type CacheRow } from './handler';
 import { buildKit } from '../../../src/kit/rules';
 
@@ -198,4 +199,70 @@ test('area: upstream edge cases', async () => {
 
   const oddFips = await fetchArea(1, 1, fakeUpstream([{ county_fips: "06077' OR 1=1" }]));
   expect(oddFips.in_us).toBe(false);
+});
+
+// Overpass and FEMA shelter responses shaped like the ones in docs/data-sources.md.
+function fakePlaces(overpass: unknown, shelters: unknown = { features: [] }): typeof fetch {
+  return (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.includes('overpass-api.de')) return ok(overpass);
+    if (url.includes('gis.fema.gov')) return ok(shelters);
+    throw new Error(`unexpected ${url}`);
+  }) as typeof fetch;
+}
+
+// protects=Nearby help shows the 3 nearest per category with names, distances and way centers; fails_when=a 4th place, an unknown amenity, a place over 10 km or a shelter without coordinates gets through, or ways lose their center; no_claim=live Overpass returns these tags for real places
+test('places: nearest 3 per category, ways use center, shelters need coordinates', async () => {
+  const hospital = (lat: number, name?: string) => ({ type: 'node', lat, lon: -121.54, tags: { amenity: 'hospital', ...(name ? { name } : {}) } });
+  const result = await fetchPlaces(
+    37.78,
+    -121.54,
+    fakePlaces(
+      {
+        elements: [
+          hospital(37.84, 'Far'),
+          hospital(37.79, 'Near'),
+          hospital(37.81),
+          hospital(37.8, 'Mid'),
+          hospital(37.9, 'Out of range'), // ~13 km north
+          { type: 'way', center: { lat: 37.785, lon: -121.54 }, tags: { amenity: 'social_facility', social_facility: 'food_bank', name: 'Pantry' } },
+          { type: 'node', lat: 37.78, lon: -121.54, tags: { amenity: 'bench' } },
+        ],
+      },
+      {
+        features: [
+          { attributes: { shelter_name: 'No coords', latitude: null, longitude: null } },
+          { attributes: { shelter_name: 'High School', address: '1 Main St', city: 'Tracy', state: 'CA', latitude: 37.79, longitude: -121.54 } },
+        ],
+      },
+    ),
+  );
+  expect(result.places.map((p) => [p.category, p.name, p.distance_km])).toEqual([
+    ['hospital', 'Near', 1.1],
+    ['hospital', 'Mid', 2.2],
+    ['hospital', null, 3.3],
+    ['food_bank', 'Pantry', 0.6],
+  ]);
+  expect(result.shelters).toEqual([
+    { name: 'High School', address: '1 Main St, Tracy, CA', lat: 37.79, lon: -121.54, distance_km: 1.1 },
+  ]);
+});
+
+// protects=neither an Overpass nor a FEMA failure is cached as "nothing nearby" / "no shelters" for 7 days; fails_when=an Overpass timeout remark or a FEMA HTTP-200 error body resolves instead of throwing; no_claim=other Overpass error remarks are worded this way
+test('places: Overpass timeout remark and FEMA error both throw', async () => {
+  await expect(
+    fetchPlaces(37.78, -121.54, fakePlaces({ elements: [], remark: 'runtime error: Query timed out in "query" at line 2 after 41 seconds.' })),
+  ).rejects.toThrow('Overpass');
+  const pharmacy = { type: 'node', lat: 37.79, lon: -121.54, tags: { amenity: 'pharmacy', name: 'Walgreens' } };
+  await expect(
+    fetchPlaces(37.78, -121.54, fakePlaces({ elements: [pharmacy] }, { error: { code: 400, message: 'Invalid query' } })),
+  ).rejects.toThrow('FEMA');
+});
+
+// protects=a FEMA outage never breaks Nearby help outside the US, where shelters aren't shown; fails_when=a non-US point still calls FEMA; no_claim=the US box matches every FEMA-covered place
+test('places: points outside the US skip FEMA', async () => {
+  const chemist = { type: 'node', lat: -1.28, lon: 36.82, tags: { amenity: 'pharmacy', name: 'Nairobi Chemist' } };
+  const result = await fetchPlaces(-1.29, 36.82, fakePlaces({ elements: [chemist] }, { error: { code: 500, message: 'down' } }));
+  expect(result.places.map((p) => p.name)).toEqual(['Nairobi Chemist']);
+  expect(result.shelters).toEqual([]);
 });

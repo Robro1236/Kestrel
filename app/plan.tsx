@@ -4,6 +4,7 @@ import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, V
 
 import { Tap } from '../src/components/Tap';
 import { AirBanner, useAirQuality } from '../src/components/AirBanner';
+import { Collapse } from '../src/components/Collapse';
 import { CountyHelp } from '../src/components/CountyHelp';
 import { FamilyPlanLink } from '../src/components/FamilyPlanLink';
 import { Icon } from '../src/components/Icon';
@@ -42,6 +43,8 @@ export default function Plan() {
   const [areaFailed, setAreaFailed] = useState(false);
   // Several details can be open at once, so opening one never collapses another and shifts the page.
   const [open, setOpen] = useState<string[]>([]);
+  // Cards the user folded or opened by hand; otherwise a card folds once every item in it is checked.
+  const [fold, setFold] = useState<Record<string, boolean>>({});
   const [warnings, setWarnings] = useState<Saved<WarningsData> | null>(null);
   const [warningsFailed, setWarningsFailed] = useState(false);
   const air = useAirQuality(place?.lat, place?.lon);
@@ -107,12 +110,16 @@ export default function Plan() {
   const strip = useRef(new Animated.Value(0)).current;
   useEffect(() => spring(strip, pinned ? 1 : 0), [strip, pinned]);
 
-  const toggle = (id: string) =>
+  const toggle = (id: string) => {
+    // A check hands the card back to the auto rule, so finishing it folds it even if it was opened by hand.
+    const g = kit.find((i) => i.id === id)?.group;
+    if (g && g in fold) setFold(({ [g]: _, ...rest }) => rest);
     setChecked((c) => {
       const next = c.includes(id) ? c.filter((x) => x !== id) : [...c, id];
       save('checked', next);
       return next;
     });
+  };
 
   if (!household || !place) {
     return (
@@ -186,14 +193,27 @@ export default function Plan() {
         const items = kit.filter((i) => i.group === g);
         if (!items.length) return null;
         const got = items.filter((i) => checked.includes(i.id)).length;
+        const folded = fold[g] ?? got === items.length;
         return (
-          <View key={g} style={ui.card}>
-            <View style={styles.progressRow}>
+          <View key={g} style={[ui.card, styles.groupCard]}>
+            {/* Tapping the title folds the card down to its title and count. */}
+            <Tap
+              accessibilityRole="button"
+              accessibilityLabel={`${g}, ${got} of ${items.length}`}
+              aria-expanded={!folded}
+              onPress={() => setFold({ ...fold, [g]: !folded })}
+              style={[styles.progressRow, styles.groupHead]}
+            >
               <Text accessibilityRole="header" style={ui.cardTitle}>{g}</Text>
-              <Text style={[styles.groupCount, got === items.length && styles.groupDone]}>
-                {got} of {items.length}
-              </Text>
-            </View>
+              <View style={styles.groupEnd}>
+                <Text style={[styles.groupCount, got === items.length && styles.groupDone]}>
+                  {got} of {items.length}
+                </Text>
+                <Icon name={folded ? 'chevronRight' : 'chevronDown'} size={18} color={colors.muted} />
+              </View>
+            </Tap>
+            {/* Folding by hand is instant; folding because the card is now complete waits a beat. */}
+            <Collapse open={!folded} closeDelay={g in fold ? 0 : 600} style={styles.groupBody}>
             {items.map((item) => {
               const on = checked.includes(item.id);
               return (
@@ -212,6 +232,7 @@ export default function Plan() {
                 </Info>
               );
             })}
+            </Collapse>
           </View>
         );
       })}
@@ -342,4 +363,9 @@ const styles = StyleSheet.create({
   kitLabel: { paddingHorizontal: 4 },
   groupCount: { fontFamily: fonts.semi, fontSize: 13, fontVariant: ['tabular-nums'], color: colors.muted },
   groupDone: { color: colors.success },
+  groupHead: { minHeight: 44 },
+  // The card's gap moves inside the slide, so a folded card has no empty space under its title.
+  groupCard: { gap: 0 },
+  groupBody: { gap: 10, paddingTop: 10 },
+  groupEnd: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 });

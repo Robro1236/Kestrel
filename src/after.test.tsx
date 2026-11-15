@@ -10,7 +10,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 const mockNavigate = jest.fn();
-jest.mock('expo-router', () => ({ useRouter: () => ({ navigate: mockNavigate, replace: jest.fn() }) }));
+jest.mock('expo-router', () => ({ useRouter: () => ({ navigate: mockNavigate, replace: jest.fn() }), usePathname: () => '/plan' }));
 jest.mock('./useLocalArea', () => ({ useLocalArea: jest.fn() }));
 const area = (inUs: boolean, extra = {}) => ({ place: { lat: 0, lon: 0, label: 'Tracy, CA' }, inUs, ...extra }) as never;
 
@@ -54,10 +54,12 @@ test('Water: hidden-water card sits above the make-water-safe steps', async () =
   expect(heads.indexOf('Water already in your home')).toBe(heads.indexOf('If you need to make water safe') - 1);
 });
 
-// protects=the menu links to the after-disaster screen; fails_when=the link is missing or goes anywhere but /after; no_claim=the menu's animation
+// protects=the menu links to the after-disaster screen, and the page you're on can't be opened again; fails_when=the link is missing or goes anywhere but /after, or Home on the plan navigates; no_claim=the menu's animation or the greyed look
 test('Menu: links to After a disaster', async () => {
   await render(<Menu />);
   await fireEvent.press(screen.getByLabelText('Menu'));
+  await fireEvent.press(screen.getByText('Home'));
+  expect(mockNavigate).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByText('After a disaster'));
   expect(mockNavigate).toHaveBeenCalledWith('/after');
 });

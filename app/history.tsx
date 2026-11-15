@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '../src/components/Icon';
 import { Loading } from '../src/components/Loading';
@@ -10,6 +10,8 @@ import { localDay } from '../src/date';
 import { popIn, spring } from '../src/motion';
 import { useLocalArea } from '../src/useLocalArea';
 import { colors, fonts, ui } from '../src/theme';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // Past federal disaster declarations for the saved county, newest first: real history, not a forecast.
 export default function HistoryScreen() {
@@ -49,7 +51,9 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.fill}>
-      <ScrollView contentContainerStyle={ui.screen}>
+      <ScrollView contentContainerStyle={styles.grow}>
+        {/* A tap anywhere that isn't a control or the open card closes the card. Not a screen-reader stop: the dot toggles it too. */}
+        <Pressable accessible={false} focusable={false} disabled={active === null} onPress={() => setActive(null)} style={[ui.screen, styles.grow]}>
         <PageHeader title="Disaster history" place={a.place.label} />
         {message || !Array.isArray(list) ? (
           <Text style={[styles.muted, styles.pad]}>{message}</Text>
@@ -81,11 +85,12 @@ export default function HistoryScreen() {
                     />
                     <View style={[styles.side, left && styles.flip]}>
                       <View style={[styles.branch, on && styles.on]} />
-                      <View style={styles.entry}>
+                      {/* The text opens the same card as the dot; the dot stays the one control screen readers hear. */}
+                      <Tap accessible={false} focusable={false} onPress={() => setActive(on ? null : d.id)} style={styles.entry}>
                         <Text style={[styles.date, align]}>{d.date}</Text>
                         <Text style={[styles.type, align, on && styles.typeOn]}>{d.type}</Text>
                         {d.name ? <Text style={[styles.name, align]}>{d.name}</Text> : null}
-                      </View>
+                      </Tap>
                     </View>
                   </View>
                 );
@@ -99,6 +104,7 @@ export default function HistoryScreen() {
             <Text style={[styles.source, styles.pad]}>Source: OpenFEMA disaster declarations, checked {localDay(new Date().toISOString())}</Text>
           </>
         )}
+        </Pressable>
       </ScrollView>
       {full ? <FullDetails d={full} onClose={() => setFull(null)} /> : null}
     </View>
@@ -116,7 +122,10 @@ function Details({ d, fromLeft, up, onExpand }: { d: Declaration; fromLeft: bool
     <>
       <View style={[styles.branch, styles.on]} />
       <View style={styles.anchor}>
-        <Animated.View
+        {/* A pressable with no action: it claims taps inside the card, so they don't count as tapping outside it. */}
+        <AnimatedPressable
+          accessible={false}
+          focusable={false}
           style={[
             ui.card,
             styles.panel,
@@ -130,7 +139,7 @@ function Details({ d, fromLeft, up, onExpand }: { d: Declaration; fromLeft: bool
           <Tap accessibilityRole="button" accessibilityLabel="Full screen" onPress={onExpand} style={styles.corner}>
             <Icon name="expand" size={18} color={colors.muted} />
           </Tap>
-        </Animated.View>
+        </AnimatedPressable>
       </View>
     </>
   );
@@ -188,6 +197,8 @@ function Facts({ d }: { d: Declaration }) {
 const styles = StyleSheet.create({
   raised: { zIndex: 1 },
   fill: { flex: 1 },
+  // The tap-to-close area reaches the bottom of the screen even when the page is short.
+  grow: { flexGrow: 1 },
   // Covers the page below the app header, so it stays inside the safe area the layout already gives.
   full: { ...StyleSheet.absoluteFill, zIndex: 2, backgroundColor: colors.bg },
   fullBody: { gap: 16, paddingTop: 24 },

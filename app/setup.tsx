@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, type ScrollViewInstance, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, type ScrollViewInstance, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { Tap } from '../src/components/Tap';
 import { Icon } from '../src/components/Icon';
-import { resolveGps, resolveText, type ResolvedLocation } from '../src/data/location';
+import { Loading } from '../src/components/Loading';
+import { isZip, resolveGps, resolveText, searchPlaces, type ResolvedLocation } from '../src/data/location';
 import type { Household } from '../src/kit/rules';
 import { colors, fonts, ui } from '../src/theme';
 
@@ -29,6 +30,7 @@ const FLAGS: [keyof Household, string][] = [
 
 export default function Setup() {
   const router = useRouter();
+  const navigation = useNavigation();
   const [household, setHousehold] = useState(DEFAULT_HOUSEHOLD);
   const [location, setLocation] = useState<ResolvedLocation | null>(null);
   const [query, setQuery] = useState('');
@@ -43,6 +45,48 @@ export default function Setup() {
   const errorAt = (at: 'gps' | 'place' | 'who') =>
     error?.at === at ? <Text accessibilityRole="alert" style={styles.error}>{error.text}</Text> : null;
   const [busy, setBusy] = useState(false);
+  // After "Build my kit": a blank screen with a spinner until the plan opens.
+  const [building, setBuilding] = useState(false);
+  // Autocomplete list, after the W3C APG "combobox with list autocomplete" pattern: nothing is picked until the user picks it.
+  const [suggestions, setSuggestions] = useState<ResolvedLocation[]>([]);
+  const [active, setActive] = useState(-1);
+
+  // One search per pause in typing (300 ms), never per keystroke; a newer query aborts the older one.
+  useEffect(() => {
+    const q = query.trim();
+    setActive(-1);
+    if (q.length < 3 || (/^\d+$/.test(q) && !isZip(q))) return setSuggestions([]);
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 10000);
+    const wait = setTimeout(() => {
+      searchPlaces(q, 5, ctrl.signal)
+        .then((found) => !ctrl.signal.aborted && setSuggestions(found))
+        // Suggestions are a convenience: Build still resolves the typed text and reports its own error.
+        .catch(() => !ctrl.signal.aborted && setSuggestions([]));
+    }, 300);
+    return () => (clearTimeout(wait), clearTimeout(timeout), ctrl.abort());
+  }, [query]);
+
+  const pick = (place: ResolvedLocation) => {
+    // Keep the exact place picked; re-resolving the text could land on a different Springfield.
+    setLocation(place);
+    setQuery('');
+    setSuggestions([]);
+    setError(null);
+  };
+  const open = suggestions.length > 0;
+  // react-native-web passes these through to the input; RN's types do not list them.
+  const comboAria = {
+    'aria-autocomplete': 'list',
+    'aria-controls': 'place-list',
+    'aria-activedescendant': active >= 0 ? `place-opt-${active}` : undefined,
+  } as object;
+  const onKey = (key: string) => {
+    if (!open) return;
+    if (key === 'ArrowDown') setActive((i) => (i + 1) % suggestions.length);
+    else if (key === 'ArrowUp') setActive((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+    else if (key === 'Escape') setSuggestions([]);
+  };
 
   // "Edit household" comes back here: start from what was saved.
   useEffect(() => {
@@ -93,6 +137,14 @@ export default function Setup() {
         ['household', JSON.stringify(household)],
         ['location', JSON.stringify(place)],
       ]).catch(() => {});
+      // Deliberate exception to "never delay navigation" (DESIGN.md): a short pause so the kit reads as worked out for
+      // this household. Longer the first time, shorter but still noticeable after.
+      const builtBefore = await AsyncStorage.getItem('kitBuilt').catch(() => null);
+      setBuilding(true);
+      await new Promise((r) => setTimeout(r, builtBefore ? 1020 : 2125));
+      await AsyncStorage.setItem('kitBuilt', '1').catch(() => {});
+      // They opened another page from the menu during the wait: don't pull them back, and leave Setup usable.
+      if (!navigation.isFocused()) return setBuilding(false);
       // replace, not push: Edit household -> Build must not stack a second plan screen.
       router.replace('/plan');
     } catch {
@@ -102,6 +154,7 @@ export default function Setup() {
     }
   }
 
+  if (building) return <Loading />;
   return (
     <ScrollView ref={scroll} contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled">
       <View style={ui.card}>
@@ -116,10 +169,38 @@ export default function Setup() {
         style={styles.input}
         value={query}
         onChangeText={setQuery}
-        onSubmitEditing={build}
+        role="combobox"
+        aria-expanded={open}
+        {...(Platform.OS === 'web' ? comboAria : {})}
+        onKeyPress={(e) => onKey(e.nativeEvent.key)}
+        onSubmitEditing={() => (open && active >= 0 ? pick(suggestions[active]) : build())}
         returnKeyType="done"
         autoCorrect={false}
       />
+      {open ? (
+        <View role="list" {...(Platform.OS === 'web' ? ({ role: 'listbox' } as object) : {})} nativeID="place-list" aria-label="Matching places" style={styles.list}>
+          {suggestions.map((s, i) => {
+            const [name, ...rest] = s.label.split(', ');
+            return (
+              <Tap
+                key={`${s.lat},${s.lon},${i}`}
+                nativeID={`place-opt-${i}`}
+                role="option"
+                aria-selected={i === active}
+                accessibilityLabel={s.label}
+                style={[styles.option, i > 0 && styles.optionRule, i === active && styles.optionActive]}
+                onHoverIn={() => setActive(i)}
+                onPress={() => pick(s)}
+              >
+                <View style={styles.optionText}>
+                  <Text style={styles.optionName}>{name}</Text>
+                  {rest.length ? <Text style={styles.optionPlace}>{rest.join(', ')}</Text> : null}
+                </View>
+              </Tap>
+            );
+          })}
+        </View>
+      ) : null}
       {errorAt('place')}
       {location && !query.trim() ? <Text style={styles.note}>Using: {location.label}</Text> : null}
       </View>
@@ -164,6 +245,13 @@ export default function Setup() {
 
 const styles = StyleSheet.create({
   input: { fontFamily: fonts.body, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bg, borderRadius: 12, padding: 14, fontSize: 16, color: colors.ink },
+  list: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 12, overflow: 'hidden' },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, paddingHorizontal: 14, paddingVertical: 10 },
+  optionRule: { borderTopWidth: 1, borderTopColor: colors.border },
+  optionActive: { backgroundColor: colors.primarySoft },
+  optionText: { flex: 1 },
+  optionName: { fontFamily: fonts.semi, fontSize: 16, color: colors.ink },
+  optionPlace: { fontFamily: fonts.body, fontSize: 14, color: colors.muted },
   note: { fontFamily: fonts.body, fontSize: 14, color: colors.muted },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
   label: { fontFamily: fonts.body, flex: 1, fontSize: 16, color: colors.text },

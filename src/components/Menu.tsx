@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { type Href, useRouter } from 'expo-router';
+import { type Href, usePathname, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -24,6 +24,7 @@ const LINKS: [string, Href][] = [
 // Header hamburger: navigation plus device settings. Replaces the back arrow.
 export function Menu() {
   const router = useRouter();
+  const path = usePathname();
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
   // The sheet grows out of the menu button (top right) with a small overshoot.
@@ -73,9 +74,17 @@ export function Menu() {
             </Tap>
           </View>
           {LINKS.filter(([, href]) => county || href !== '/county').map(([label, href]) => (
-            <Tap key={label} accessibilityRole="link" onPress={() => go(href)} style={styles.item}>
-              <Text style={styles.itemText}>{label}</Text>
-              <Icon name="chevronRight" size={18} color={colors.subtle} />
+            // The page you're on is shown but can't be opened again.
+            <Tap
+              key={label}
+              accessibilityRole="link"
+              accessibilityState={{ disabled: href === path, selected: href === path }}
+              disabled={href === path}
+              onPress={() => go(href)}
+              style={styles.item}
+            >
+              <Text style={[styles.itemText, href === path && styles.here]}>{label}</Text>
+              {href === path ? null : <Icon name="chevronRight" size={18} color={colors.subtle} />}
             </Tap>
           ))}
           <Text style={styles.section}>Settings</Text>
@@ -107,6 +116,7 @@ const styles = StyleSheet.create({
   item: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, borderRadius: 10 },
   itemText: { fontFamily: fonts.semi, fontSize: 16, color: colors.text },
   danger: { color: colors.danger },
+  here: { color: colors.subtle },
   section: { fontFamily: fonts.bold, fontSize: 12, color: colors.subtle, letterSpacing: 0.8, textTransform: 'uppercase', paddingHorizontal: 12, marginTop: 10, marginBottom: 2 },
   foot: { fontFamily: fonts.body, fontSize: 13, color: colors.subtle, paddingHorizontal: 12, marginTop: 4 },
 });

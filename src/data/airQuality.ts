@@ -19,7 +19,7 @@ export async function fetchJson(url: string, timeoutMs: number, headers?: Record
 export async function fetchAirQuality(lat: number, lon: number): Promise<AirQuality | null> {
   try {
     const body = await fetchJson(
-      `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm2_5`,
+      `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}&current=us_aqi,pm2_5`,
       10_000,
     );
     const aqi = body?.current?.us_aqi;

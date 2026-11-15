@@ -15,13 +15,16 @@ test('air banner: hidden at 100, tiers at their edges', () => {
   expect(label(100.4)).toBe('Unhealthy for sensitive groups');
 });
 
-// protects=no banner without data ("never show air is fine without data"); fails_when=a failed call, HTTP error or missing us_aqi yields a number; no_claim=Open-Meteo still names the field us_aqi
+// protects=no banner without data ("never show air is fine without data"); fails_when=a failed call, HTTP error or missing us_aqi yields a number, or the exact location is sent; no_claim=Open-Meteo still names the field us_aqi
 test('air quality: failures and missing AQI give null', async () => {
   const respond = (ok: boolean, body: unknown) =>
     (globalThis.fetch = jest.fn().mockResolvedValue({ ok, status: ok ? 200 : 500, json: async () => body }) as unknown as typeof fetch);
 
   respond(true, { current: { us_aqi: 132, pm2_5: 48.1 } });
   expect(await fetchAirQuality(37.78, -121.54)).toMatchObject({ aqi: 132, pm25: 48.1 });
+  // Only the ~1 km rounded point leaves the device, as with the Supabase lookup.
+  await fetchAirQuality(37.7812, -121.5436);
+  expect((globalThis.fetch as jest.Mock).mock.calls[1][0]).toContain('latitude=37.78&longitude=-121.54&');
   respond(true, { current: {} });
   expect(await fetchAirQuality(37.78, -121.54)).toBeNull();
   respond(false, {});

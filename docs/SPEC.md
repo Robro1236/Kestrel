@@ -45,7 +45,7 @@ Phone/browser (Expo app, web + native from one codebase)
   │    Zippopotam.us (US ZIP → lat/lon), NWS alerts
   ├─ Supabase Edge Function `lookup` (cached in Postgres):
   │    kind=area   → country, in_us, county, FEMA NRI hazard ratings
-  │    kind=places → OpenStreetMap places (Overpass), FEMA open shelters
+  │    kind=places → OpenStreetMap places (Overpass, Photon fallback), FEMA open shelters
   ├─ Supabase RPC: record_plan(), prepared_count()
   └─ AsyncStorage (localStorage on web): household, location, checkmarks, last results
 ```
@@ -138,6 +138,7 @@ List hazards rated ≥ RM with their FEMA NRI rating, plus the text "Source: FEM
 
 - **From OpenStreetMap via Overpass**, 10 km radius, the 3 nearest of each: hospital (`amenity=hospital`), fire station, police, pharmacy, food bank (`social_facility=food_bank`). Show name, distance, and a "Directions" link (`https://www.google.com/maps/dir/?api=1&destination={lat},{lon}`). Footer: "Data © OpenStreetMap contributors, fetched {date}." A category with no results shows "None found within 10 km." A place with no `name` tag shows its category name (e.g. "Pharmacy").
 - **Overpass is slow (25–34 s uncached).** This section loads on its own with a "Finding nearby help…" state; the rest of the plan never waits for it. Warm the cache for the demo ZIP before judging.
+- **If every Overpass server fails within 35 s, Photon fills in.** Photon is a name search, so it can miss places (e.g. a "Walgreens" pharmacy). The section says so, and that answer is cached for 1 day instead of 7.
 - **Shelters:** FEMA open-shelter data (endpoint in `docs/data-sources.md`), labelled "Open during active disasters only." Rows with no latitude/longitude are skipped. Always also show a link to the Red Cross "Find an open shelter" page.
 - **Official links (US), each with a "link checked {date}" constant:**
   - Cooling centers and water distribution: "Call or text **2-1-1**" (United Way 211) and "Check {county name} emergency services."
@@ -179,7 +180,7 @@ The app inserts one `kit_plans` row the **first** time a device builds a kit (an
 - Reject lat outside [-90, 90] or lon outside [-180, 180] with HTTP 400.
 - Response `area`: `{ "country_code": "US", "in_us": true, "county": "San Joaquin County", "state": "CA", "county_fips": "06077", "hazards": [{ "type": "inland_flood", "rating": "Relatively High" }], "fetched_at": "...", "stale": false }`
 - Response `places`: `{ "places": [{ "category": "hospital", "name": "...", "lat": 0, "lon": 0, "distance_km": 3.2 }], "shelters": [], "fetched_at": "...", "stale": false }`
-- Upstreams (all confirmed in Task 0, see `docs/data-sources.md`): FCC Area API for county FIPS; FEMA NRI ArcGIS feature service (it returns HTTP 200 with an `error` body on a bad query, so check the body); Photon reverse (`photon.komoot.io`, OpenStreetMap data) for country outside the US, replacing Nominatim, which failed every call from the deployed function (T3); Overpass `https://overpass-api.de/api/interpreter` with a 45 s fetch timeout; FEMA open shelters.
+- Upstreams (all confirmed in Task 0, see `docs/data-sources.md`): FCC Area API for county FIPS; FEMA NRI ArcGIS feature service (it returns HTTP 200 with an `error` body on a bad query, so check the body); Photon reverse (`photon.komoot.io`, OpenStreetMap data) for country outside the US, replacing Nominatim, which failed every call from the deployed function (T3); Overpass `https://overpass-api.de/api/interpreter`, then the `maps.mail.ru` mirror, sharing a 35 s budget (overpass-api.de returned HTTP 406 to Supabase in Nov 2026); Photon search as the places fallback; FEMA open shelters.
 
 ### Offline and persistence (`src/storage.ts`)
 

@@ -7,7 +7,8 @@ export type Cache = {
   put(key: string, payload: Record<string, unknown>): Promise<string>; // returns fetched_at
 };
 export type Kind = {
-  ttlDays: number;
+  // A function when how long a row stays fresh depends on what was fetched.
+  ttlDays: number | ((payload: Record<string, unknown>) => number);
   fetch(lat: number, lon: number): Promise<Record<string, unknown>>;
 };
 
@@ -45,7 +46,8 @@ export function makeHandler(cache: Cache, kinds: Record<string, Kind>, now = () 
     } catch (e) {
       console.error('cache read failed', e);
     }
-    if (row && now() - Date.parse(row.fetched_at) < kind.ttlDays * 86_400_000) {
+    const ttlDays = row ? (typeof kind.ttlDays === 'function' ? kind.ttlDays(row.payload) : kind.ttlDays) : 0;
+    if (row && now() - Date.parse(row.fetched_at) < ttlDays * 86_400_000) {
       return json({ ...row.payload, fetched_at: row.fetched_at, stale: false });
     }
 

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { fetchJson } from '../data/airQuality';
 import { distanceKm, type Category, type Place, type Shelter } from '../../supabase/functions/lookup/places';
 
 // lat/lon: the rounded point the lookup ran for.
-export type PlacesResult = { lat: number; lon: number; places: Place[]; shelters: Shelter[]; fetched_at: string; stale?: boolean };
+// source is missing on copies saved before the Photon fallback; those came from Overpass.
+export type PlacesResult = { lat: number; lon: number; places: Place[]; source?: 'overpass' | 'photon'; shelters: Shelter[]; fetched_at: string; stale?: boolean };
 
 const CATEGORY_LABELS: Record<Category, string> = {
   hospital: 'Hospital',
@@ -25,7 +26,7 @@ const LINKS = {
 
 const directions = (lat: number, lon: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
 
-// Uncached Overpass takes 25-34 s and the function waits up to 45 s for it.
+// Uncached Overpass takes 25-34 s; the function gives it 35 s, then falls back to Photon.
 export async function fetchNearby(lat: number, lon: number): Promise<PlacesResult> {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -104,9 +105,9 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
                     <Text style={styles.name}>
                       {p.name ?? CATEGORY_LABELS[c]} · {p.distance_km} km
                     </Text>
-                    <Text accessibilityRole="link" style={styles.link} onPress={() => Linking.openURL(directions(p.lat, p.lon))}>
+                    <Link url={directions(p.lat, p.lon)} label={`Directions to ${p.name ?? CATEGORY_LABELS[c]}`}>
                       Directions
-                    </Text>
+                    </Link>
                   </View>
                 ))}
               </View>
@@ -114,6 +115,7 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
           })}
           <Text style={styles.source}>
             Data © OpenStreetMap contributors, fetched {result.fetched_at.slice(0, 10)}.
+            {result.source === 'photon' ? ' Found by name search (Photon) while the main source is down, so some places may be missing.' : ''}
             {result.stale ? ' The live source is down, so this is the last saved copy.' : ''}
           </Text>
         </>
@@ -130,9 +132,9 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
                   {s.name ?? 'Shelter'}
                   {s.address ? `, ${s.address}` : ''} · {s.distance_km} km
                 </Text>
-                <Text accessibilityRole="link" style={styles.link} onPress={() => Linking.openURL(directions(s.lat, s.lon))}>
+                <Link url={directions(s.lat, s.lon)} label={`Directions to ${s.name ?? 'shelter'}`}>
                   Directions
-                </Text>
+                </Link>
               </View>
             ))}
             {result ? (
@@ -141,25 +143,21 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
                 {result.stale ? ' The live source is down; these shelters may have closed since.' : ''}
               </Text>
             ) : null}
-            <Text accessibilityRole="link" style={styles.link} onPress={() => Linking.openURL(LINKS.redCrossShelters)}>
-              Red Cross: find an open shelter
-            </Text>
+            <Link url={LINKS.redCrossShelters}>Red Cross: find an open shelter</Link>
           </View>
 
           <View style={styles.group}>
             <Text style={styles.subheading}>Cooling centers and water distribution</Text>
             <Text>
-              Call or text <Text style={styles.bold}>2-1-1</Text> (United Way 211).{' '}
-              <Text accessibilityRole="link" style={styles.link} onPress={() => Linking.openURL(LINKS.twoOneOne)}>211.org</Text>
+              Call or text <Text style={styles.bold}>2-1-1</Text> (United Way 211).
             </Text>
+            <Link url={LINKS.twoOneOne}>211.org</Link>
             <Text>Check {countyText}.</Text>
           </View>
 
           <View style={styles.group}>
             <Text style={styles.subheading}>Evacuation</Text>
-            <Text accessibilityRole="link" style={styles.link} onPress={() => Linking.openURL(LINKS.evacuation)}>
-              Ready.gov: evacuation
-            </Text>
+            <Link url={LINKS.evacuation}>Ready.gov: evacuation</Link>
             <Text>Check {countyText}.</Text>
           </View>
           <Text style={styles.source}>Links checked {LINKS_CHECKED}.</Text>
@@ -171,6 +169,15 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
   );
 }
 
+// A Pressable, not a pressable Text, so keyboards can reach it and the tap target is 44 px tall.
+function Link({ url, label, children }: { url: string; label?: string; children: string }) {
+  return (
+    <Pressable accessibilityRole="link" accessibilityLabel={label} onPress={() => Linking.openURL(url)} style={styles.linkHit}>
+      <Text style={styles.link}>{children}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   section: { gap: 8 },
   heading: { fontSize: 20, fontWeight: '700' },
@@ -179,6 +186,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 32, flexWrap: 'wrap' },
   name: { flex: 1, fontSize: 15 },
   note: { fontSize: 14, color: '#555' },
+  linkHit: { minHeight: 44, justifyContent: 'center' },
   link: { color: '#0b5cad', textDecorationLine: 'underline', fontSize: 15 },
   bold: { fontWeight: '700' },
   source: { fontSize: 12, color: '#555' },

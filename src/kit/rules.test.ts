@@ -105,7 +105,7 @@ test('rating threshold', () => {
 
 // protects=infants never get masks or helmets, and pets never count as people
 // fails_when=an infant or a pet raises the dust mask, N95 or helmet count
-// no_claim=does not check that a car seat is the right advice for every infant
+// no_claim=does not check the wording of the infant note on helmets
 test('masks and helmets count everyone but infants and pets', () => {
   const h = { ...base, infants: 1, dogs: 2, cats: 1 };
   const hz = [rm('wildfire'), rm('tornado')];

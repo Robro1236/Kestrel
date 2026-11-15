@@ -6,9 +6,9 @@ How to get your Claude Code set up the same way mine is, so we use the same skil
 
 > Follow CLAUDE_SETUP.md and set up my machine.
 
-Claude runs the installs for you and asks before each command. You still have to do three things yourself: approve the MCP servers, sign in to `motion-plus` with `/mcp`, and install the agent-skills and ponytail plugins from the Claude desktop app (end of section 2). When it's done, **restart Claude Code** so it loads the new skills.
+Claude runs the installs for you and asks before each command. You still have to install the agent-skills and ponytail plugins from the Claude desktop app (end of section 2). When it's done, **restart Claude Code** so it loads the new skills.
 
-> **For Claude, if you're following this guide:** work through section 2 in order. First check what's already installed (`git --version`, `node --version`, `bun --version`, `uv --version`, `ls ~/.claude/skills/gstack`, `graphify --help`, `claude plugin list`) and skip anything that's already there. Run `winget` commands in PowerShell and everything else in Git Bash. If a new tool isn't on PATH after `winget`, ask the user to restart the terminal or Claude Code, then continue. If a command fails, show the error and stop instead of improvising workarounds. Don't touch `~/.claude/settings.json` (section 3 is optional and up to the user). Finish by telling the user what got installed, what was skipped, and that they need to run `/mcp` and restart Claude Code.
+> **For Claude, if you're following this guide:** work through section 2 in order. First check what's already installed (`git --version`, `node --version`, `bun --version`, `uv --version`, `ls ~/.claude/skills/gstack`, `graphify --help`, `claude plugin list`) and skip anything that's already there. Run `winget` commands in PowerShell and everything else in Git Bash. If a new tool isn't on PATH after `winget`, ask the user to restart the terminal or Claude Code, then continue. If a command fails, show the error and stop instead of improvising workarounds. Don't touch `~/.claude/settings.json` (section 3 is optional and up to the user). Finish by telling the user what got installed, what was skipped, and that they need to restart Claude Code.
 
 There are two kinds of setup:
 
@@ -19,17 +19,9 @@ There are two kinds of setup:
 
 ## 1. Comes with the repo (nothing to do)
 
-After `git pull`, your Claude picks these up automatically when you open the project:
+After `git pull`, your Claude reads `CLAUDE.md` and `CONSTRAINTS.md` automatically. The repo has no project skills or MCP servers right now.
 
-| What | Where | What it does |
-|---|---|---|
-| **Motion skill** | `.claude/skills/motion/` | Animation best practices, CSS springs and performance audits for Motion (`motion/react`) |
-| **motion-reviewer agent** | `.claude/agents/motion-reviewer.md` | Subagent that audits animation performance across the project |
-| **Motion MCP servers** | `.mcp.json` | `motion` (docs/examples search) and `motion-plus` |
-
-The first time you open the project, Claude asks whether to trust the MCP servers in `.mcp.json`. Say yes.
-
-`motion-plus` needs you to sign in with your own account. Run `/mcp` in Claude Code and authorize it. `motion` works without signing in.
+We removed the Motion skill, agent and MCP servers. Motion (`motion/react`) only runs on web, and the app has to build for iOS and Android too. For animation, use React Native's `Animated` or `react-native-reanimated`.
 
 ---
 

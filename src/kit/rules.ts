@@ -165,7 +165,7 @@ export function buildKit(h: Household, hazards: Hazard[]): KitItem[] {
     add('hurricane-fuel', 'Fuel up the car', 'Gas stations close or run dry before a storm.');
   }
   if (risk('tornado')) {
-    add('tornado-helmet', 'Helmets', `Head injuries from debris are the main tornado danger.${h.infants ? ' Infants go in a car seat or carrier instead.' : ''}`, wearers ? `${wearers}, one per person` : undefined);
+    add('tornado-helmet', 'Helmets', `Head injuries from debris are a common cause of tornado deaths.${h.infants ? ' Infants are not counted: helmets are not made for them.' : ''}`, wearers ? `${wearers}, one per person` : undefined);
     add('tornado-room', 'Know your safe room', 'Lowest floor, no windows.');
   }
   if (risk('winter_weather', 'cold_wave', 'ice_storm')) {

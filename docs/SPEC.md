@@ -78,30 +78,30 @@ Why the split: Open-Meteo and NWS are fast and allow browser calls. Overpass, Ph
 
 ### Supply kit rules (`src/kit/rules.ts`, pure function)
 
-`buildKit(household, hazards): KitItem[]`, where `KitItem = { id, label, qty?: string, reason: string, source: 'Ready.gov' | 'Red Cross' | 'CDC' }`.
+`buildKit(household, hazards): KitItem[]`, where `KitItem = { id, label, qty?: string, reason: string, source: 'Ready.gov' | 'Red Cross' | 'CDC', tip?: true, details?: string }`. `tip` items are nice-to-have advice: the plan screen shows them under "Extra advice", with no checkbox and no amount, and they do not count toward progress. `details` is the longer text behind an item's info button.
 
-Kit length is fixed at **3 days** (Ready.gov minimum). `people = adults + seniors + children + infants`.
+Kit length is fixed at **3 days** (Ready.gov minimum). `people = adults + seniors + children + infants`. `wearers = people − infants`: masks and helmets are not made for children under 2.
 
 | Trigger | Items (qty) |
 |---|---|
-| always | Water: `people × 3` gal (+ `dogs × 3 + cats × 1` gal for pets, rounded up) · Non-perishable food: `people × 3` days · Manual can opener · Flashlight + spare batteries · Battery or hand-crank radio (NOAA weather) · First aid kit · Whistle · Dust masks: `people` · Phone charger + power bank · Copies of IDs and insurance in a waterproof bag · Cash · Local paper map · Moist towelettes, garbage bags · Wrench or pliers to turn off utilities |
-| infants > 0 | Formula and bottles (3 days) · Diapers: `infants × 24` · Wipes · Diaper rash cream |
-| children > 0 | Comfort item or game per child · Child ID cards with a contact number |
+| always | Water: `people × 3` gal (+ `dogs × 3 + cats × 1` gal for pets, rounded up) · Non-perishable food: `people × 3` days · Manual can opener · Flashlight + spare batteries · Battery or hand-crank radio (NOAA weather) · First aid kit · Whistle · Dust masks: `wearers` · Phone charger + power bank · Copies of IDs and insurance in a waterproof bag · Cash · Local paper map · Moist towelettes, garbage bags · Wrench or pliers to turn off utilities |
+| infants > 0 | Formula and bottles (3 days) · Diapers: `infants × 24` · Wipes · Diaper rash cream (tip) |
+| children > 0 | Comfort item or game (tip) · Child ID cards (tip) with a contact number |
 | seniors > 0 or mobility = yes | Spare glasses or hearing-aid batteries · Mobility aid spare parts · Backup power for medical devices |
 | medication = yes | 7-day supply of medications · List of medications and doses |
-| dogs + cats > 0 | Pet food (3 days) · Leash or carrier · Pet medications and vet records · Recent pet photo |
-| hazard earthquake ≥ Relatively Moderate | Sturdy shoes and gloves by each bed · Strap heavy furniture and water heater · Know your gas shutoff |
-| hazard inland/coastal flood ≥ RM | Waterproof document bag · Rubber boots · Know your evacuation route (link) · Flood insurance check |
-| hazard heat wave ≥ RM | Extra water: `+people × 1` gal · Battery fan · Cooling towels · Plan to check on seniors |
-| hazard wildfire ≥ RM | N95 masks: `people × 2` · Go-bag by the door · Air purifier or DIY box-fan filter |
-| hazard hurricane ≥ RM | Plywood or shutters plan · Extra batteries · Fuel up the car |
-| hazard tornado ≥ RM | Helmet per person · Know your safe room (lowest floor, no windows) |
-| hazard winter weather / cold wave / ice storm ≥ RM | Blankets: `people` · Hand warmers · Rock salt or sand |
+| dogs + cats > 0 | Pet food (3 days) · Leash or carrier · Pet medications and vet records · Recent pet photo (tip) |
+| hazard earthquake ≥ Relatively Moderate | Sturdy shoes and gloves by each bed · Strap heavy furniture and water heater (tip) · Know your gas shutoff (tip) |
+| hazard inland/coastal flood ≥ RM | Rubber boots · Know your evacuation route (tip) · Flood insurance check (tip). No separate document bag: the always-row one covers it |
+| hazard heat wave ≥ RM | Extra water: `+people × 1` gal · Battery fan · Cooling towels (tip) · Plan to check on seniors (tip) |
+| hazard wildfire ≥ RM | N95 masks: `wearers × 2` · Go-bag by the door (tip) · Air purifier or DIY box-fan filter (tip) |
+| hazard hurricane ≥ RM | Plywood or shutters plan (tip) · Extra batteries · Fuel up the car (tip) |
+| hazard tornado ≥ RM | Helmets: `wearers` · Know your safe room (tip) |
+| hazard winter weather / cold wave / ice storm ≥ RM | Blankets: `people` · Hand warmers (tip) · Rock salt or sand (tip) |
 | hazard drought ≥ RM | (no items; covered by the water section) |
 
 "≥ RM" means FEMA NRI rating `Relatively Moderate`, `Relatively High` or `Very High`. Every other value (`Relatively Low`, `Very Low`, `No Rating`, `Not Applicable`, `Insufficient Data`) counts as below. The NRI has no riverine-flood rating; flood hazards are `inland_flood` (`IFLD_RISKR`) and `coastal_flood` (`CFLD_RISKR`). Field names for every hazard are in `docs/data-sources.md`.
 
-Checkmarks are stored per item `id`. Progress = checked / total. When the household changes, existing `id` checkmarks are kept and removed items drop out.
+Checkmarks are stored per item `id`. Progress = checked / checklist items (tips excluded). When the household changes, existing `id` checkmarks are kept and removed items drop out.
 
 ### Water safety (`src/water/guidance.ts`, pure function)
 
@@ -201,7 +201,7 @@ Order rationale: T0 first because every data section depends on which endpoints 
 | 2 | T2 | `buildKit` + tests; setup screen; location resolution | 4h / 1h | `src/kit/*`, `app/setup.tsx`, `src/data/location.ts` |
 | 2 | T3 | Supabase project, migration, `lookup` skeleton + `kind=area` | 3h / 1h | `supabase/migrations/*`, `supabase/functions/lookup/index.ts`, `.../area.ts` |
 | 2 | T6 | Vercel project, `vercel.json`, env vars, README "How to run" for judges | 1.5h / 30m | `vercel.json`, `README.md` |
-| 3 | T4 | Plan screen shell: sections, checklist, progress, storage (counter deferred to T8) | 3h / 1h | `app/plan.tsx`, `app/index.tsx`, `src/storage.ts` |
+| 3 | T4 | Plan screen shell: sections, checklist, progress, storage (counter deferred to T8) | 3h / 1h | `app/plan.tsx`, `app/index.tsx`, `src/storage.ts`; also touched `src/kit/rules.ts` + test (tips, info text, infant counts), `app/setup.tsx` (replace, not push), `src/supabase.ts` (lookup client) |
 | 3 | T5 | NWS warnings, hazards section, `waterGuidance` + tests | 3h / 1h | `src/data/nws.ts`, `src/water/*`, `src/components/Hazards.tsx`, `Warnings.tsx`, `WaterSafety.tsx` |
 | 3 | T7 | `lookup?kind=places` (Overpass + shelters), Nearby help section, air quality banner + tests | 4h / 1.5h | `supabase/functions/lookup/places.ts`, `src/data/airQuality.ts`, `src/components/NearbyHelp.tsx`, `AirBanner.tsx` |
 | 4 | T8 | Integrate, turn on the "Households prepared" counter (home `prepared_count()` + `recordPlanOnce` on the plan screen), `/qa` on the Vercel link, test on real phones, fix, submit | 3h / 1h | any |

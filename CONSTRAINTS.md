@@ -57,7 +57,7 @@ Watch items:
 
 | Metric | Today (2026-11-14) | Direction |
 |--------|-------|-----------|
-| Test count | 28 | must not fall |
+| Test count | 30 | must not fall |
 | Gzipped JS | 375 kB | should not grow faster than features |
 | Moderate/low audit findings | 22 moderate, 1 low (dev tooling) | must not grow |
 | Load p95 (50 users, from a home connection) | lookup 1164 ms, counter 700 ms, 0 failures | must not exceed 1500 ms |

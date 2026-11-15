@@ -23,6 +23,12 @@ test('plan: offline US user still gets the kit and US help links', async () => {
 
   await render(<Plan />);
   expect(await screen.findByText("Couldn't load your area's hazards, so this is the basic kit.")).toBeTruthy();
+  // The kit reads as short sections: the basic kit's four groups, each with its own count.
+  for (const g of ['Water and food', 'Light and power', 'Health and safety', 'Papers and money']) {
+    expect(screen.getByRole('header', { name: g })).toBeTruthy();
+  }
+  expect(screen.queryByRole('header', { name: 'For your household' })).toBeNull();
+  expect(screen.getByText('0 of 5')).toBeTruthy();
 
   await render(<Help />);
   await screen.findByText('Nearby help');

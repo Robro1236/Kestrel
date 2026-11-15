@@ -64,7 +64,7 @@ Why the split: Open-Meteo and NWS are fast and allow browser calls. Overpass, Ph
 
 | Route | Content |
 |---|---|
-| `app/index.tsx` | Title, one-line pitch, **Start** button. If a saved plan exists: **View my plan**. "Households prepared: N" is added in T8 (last step). |
+| `app/index.tsx` | Title, one-line pitch, **Start** button. If a saved plan exists: **View my plan**. "N households prepared" ("1 household prepared") from `prepared_count()`, refreshed on focus; hidden if it fails to load. |
 | `app/setup.tsx` | One scrolling form. **Location:** "Use my location" button or a text box (US ZIP or city). **Household:** adults (18–64), seniors (65+), children (2–17), infants (<2), dogs, cats, "someone takes daily medication" (yes/no), "someone uses a mobility aid or powered medical device" (yes/no). **Build my kit** button. |
 | `app/plan.tsx` | Sections in this order: Warnings banner (only if active) → Air quality banner (only if US AQI > 100) → Supply kit (checklist + progress) → Water safety → Local hazards → Nearby help. "Edit household" link. Each section shows its source and date in small text. |
 
@@ -171,7 +171,7 @@ create table public.lookup_cache (
 alter table public.lookup_cache enable row level security;  -- no policies: service role only
 ```
 
-The app inserts one `kit_plans` row the **first** time a device builds a kit (an AsyncStorage flag prevents repeats). **Deferred to T8:** the table, RPC and `recordPlanOnce` in `src/storage.ts` exist, but the home screen does not show the count and the plan screen does not insert rows until T8 turns it on.
+The app inserts one `kit_plans` row the **first** time a device builds a kit (an AsyncStorage flag prevents repeats). The row is `{}`, so it holds only the default `created_at`. The plan screen calls `recordPlanOnce(recordPlan)` (`src/storage.ts`, `src/supabase.ts`) without waiting on it, once the saved household and location load. A failed insert clears the flag, so the next visit retries.
 
 `supabase/functions/lookup/index.ts`: `GET /lookup?kind=area|places&lat=..&lon=..`
 

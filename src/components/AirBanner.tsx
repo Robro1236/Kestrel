@@ -24,7 +24,7 @@ export function AirBanner({ lat, lon }: { lat: number; lon: number }) {
         Air quality: {tier.label} (US AQI {Math.round(air.aqi)})
       </Text>
       <Text style={styles.tip}>{tier.tip}</Text>
-      <Text style={styles.source}>Source: Open-Meteo air quality, fetched {air.fetchedAt.slice(0, 10)}</Text>
+      <Text style={styles.source}>Source: Open-Meteo air quality, fetched {new Date(air.fetchedAt).toLocaleDateString()}</Text>
     </View>
   );
 }

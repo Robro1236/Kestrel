@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AirBanner } from '../src/components/AirBanner';
+import { CountyHelp } from '../src/components/CountyHelp';
 import { FamilyPlanLink } from '../src/components/FamilyPlanLink';
 import { Hazards } from '../src/components/Hazards';
 import { NearbyHelp, type PlacesResult } from '../src/components/NearbyHelp';
@@ -208,6 +209,7 @@ export default function Plan() {
         saved={places}
         onResult={(r) => saveResult('places', r)}
       />
+      <CountyHelp countyFips={area?.data.county_fips} />
     </ScrollView>
   );
 }

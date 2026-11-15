@@ -87,3 +87,19 @@ test('NearbyHelp: phone numbers are tappable call links', async () => {
   await fireEvent.press(screen.getByLabelText('Call 2-1-1'));
   expect(open).toHaveBeenLastCalledWith('tel:211');
 });
+
+// protects=the Hospital list leads with a real ER, not a nearer clinic OSM tags as a hospital; fails_when=hospitals are listed by distance alone; no_claim=every unmatched place is a clinic
+test('NearbyHelp: hospitals on the official ER list come before nearer clinics', async () => {
+  globalThis.fetch = jest.fn().mockRejectedValue(new TypeError('Network request failed')) as unknown as typeof fetch;
+  const saved: PlacesResult = {
+    ...result('Walgreens'),
+    places: [
+      { category: 'hospital', name: 'Tracy Medical Offices', phone: '+1 209-839-3200', lat: 37.78, lon: -121.54, distance_km: 7.5 },
+      { category: 'hospital', name: 'Sutter Tracy Community Hospital', phone: '(209) 835-1500', phone_source: 'cms', lat: 37.78, lon: -121.54, distance_km: 9.7 },
+    ],
+  };
+  await render(<NearbyHelp lat={37.78} lon={-121.54} inUs county="San Joaquin County" saved={saved} />);
+  const names = (await screen.findAllByText(/ · \d/)).map((n) => n.props.children.join(''));
+  expect(names[0]).toMatch(/^Sutter Tracy Community Hospital/);
+  expect(names[1]).toMatch(/^Tracy Medical Offices/);
+});

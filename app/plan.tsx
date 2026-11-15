@@ -10,8 +10,8 @@ import { WaterSafety } from '../src/components/WaterSafety';
 import type { ResolvedLocation } from '../src/data/location';
 import { activeOnly, fetchWarnings, type Warnings as WarningsData } from '../src/data/nws';
 import { buildKit, type Hazard, type Household, type KitItem, waterGallons } from '../src/kit/rules';
-import { load, loadResult, save, saveResult, type Saved } from '../src/storage';
-import { lookup } from '../src/supabase';
+import { load, loadResult, recordPlanOnce, save, saveResult, type Saved } from '../src/storage';
+import { lookup, recordPlan } from '../src/supabase';
 
 // Response of lookup?kind=area (see docs/SPEC.md).
 export type Area = {
@@ -70,7 +70,8 @@ export default function Plan() {
         );
       }
       setPlaces(p?.data ?? null);
-      // Counter insert (recordPlanOnce in src/storage.ts) is deferred to T8; see docs/SPEC.md.
+      // First kit on this device adds one counter row; never awaited, so the plan doesn't wait on it.
+      recordPlanOnce(recordPlan);
       try {
         const fresh = await lookup<Area>('area', l.lat, l.lon);
         await saveResult('area', fresh);
@@ -199,7 +200,7 @@ export default function Plan() {
       <NearbyHelp
         lat={place.lat}
         lon={place.lon}
-        inUs={area?.data.in_us ?? place.countryCode === 'US'}
+        inUs={inUs}
         county={area?.data.county ?? null}
         saved={places}
         onResult={(r) => saveResult('places', r)}

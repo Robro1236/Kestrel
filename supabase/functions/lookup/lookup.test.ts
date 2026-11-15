@@ -266,3 +266,58 @@ test('places: points outside the US skip FEMA', async () => {
   expect(result.places.map((p) => p.name)).toEqual(['Nairobi Chemist']);
   expect(result.shelters).toEqual([]);
 });
+
+// protects=Nearby help still works when the main Overpass server refuses us (it sent Supabase HTTP 406); fails_when=a main-server error is not retried on the mirror, or both failing hides either server's reason; no_claim=the mirror answers Supabase's servers live
+test('places: falls back to the Overpass mirror, and names both servers when both fail', async () => {
+  const pharmacy = { type: 'node', lat: 37.79, lon: -121.54, tags: { amenity: 'pharmacy', name: 'Walgreens' } };
+  const calls: string[] = [];
+  const mirrorUp = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(new URL(url).host);
+    if (url.includes('overpass-api.de')) return new Response('Not Acceptable', { status: 406 });
+    if (url.includes('maps.mail.ru')) return ok({ elements: [pharmacy] });
+    return ok({ features: [] });
+  }) as typeof fetch;
+  const result = await fetchPlaces(37.78, -121.54, mirrorUp);
+  expect(result.places.map((p) => p.name)).toEqual(['Walgreens']);
+  expect(calls.filter((h) => h !== 'gis.fema.gov')).toEqual(['overpass-api.de', 'maps.mail.ru']);
+
+  const bothDown = (async (input: string | URL | Request) =>
+    String(input).includes('gis.fema.gov') ? ok({ features: [] }) : new Response('x', { status: 406 })) as typeof fetch;
+  await expect(fetchPlaces(37.78, -121.54, bothDown)).rejects.toThrow(/overpass-api\.de: .*406.*maps\.mail\.ru: .*406/);
+});
+
+// protects=Nearby help still lists places while every Overpass server is down, and says where they came from; fails_when=an Overpass outage skips Photon, Photon results bypass the 10 km / 3-per-category rules, or the source is not reported; no_claim=Photon's name search finds every real place
+test('places: Photon fills in when every Overpass server fails', async () => {
+  const feature = (lon: number, lat: number, name: string) => ({ geometry: { coordinates: [lon, lat] }, properties: { name } });
+  const photonUp = (async (input: string | URL | Request) => {
+    const url = new URL(String(input));
+    if (url.host === 'gis.fema.gov') return ok({ features: [] });
+    if (url.host !== 'photon.komoot.io') return new Response('x', { status: 406 });
+    const tag = url.searchParams.get('osm_tag');
+    if (tag === 'amenity:hospital') return ok({ features: [feature(-121.54, 37.8, 'Sutter Tracy'), feature(-121.54, 37.9, 'Too far')] });
+    if (tag === 'amenity:pharmacy') return ok({ features: [feature(-121.54, 37.79, 'Grant Line Pharmacy'), { properties: { name: 'No point' } }] });
+    return ok({ features: [] });
+  }) as typeof fetch;
+  const result = await fetchPlaces(37.78, -121.54, photonUp);
+  expect(result.source).toBe('photon');
+  expect(result.places.map((p) => [p.category, p.name, p.distance_km])).toEqual([
+    ['hospital', 'Sutter Tracy', 2.2],
+    ['pharmacy', 'Grant Line Pharmacy', 1.1],
+  ]);
+});
+
+// protects=a Photon fallback list is retried after a day, an Overpass list kept for a week; fails_when=a function ttlDays is ignored or read from the wrong row; no_claim=index.ts uses these numbers (it does: photon 1, otherwise 7)
+test('handler: a kind can set freshness from the cached payload', async () => {
+  const day = 86_400_000;
+  const kinds = { places: { ttlDays: (p: Record<string, unknown>) => (p.source === 'photon' ? 1 : 7), fetch: jest.fn(async () => ({ source: 'overpass' })) } };
+  const aged = (source: string) => ({ 'places:1.00:1.00': { payload: { source }, fetched_at: new Date(NOW - 2 * day).toISOString() } });
+
+  const kept = await (await makeHandler(memoryCache(aged('overpass')), kinds, () => NOW)(get('kind=places&lat=1&lon=1'))).json();
+  expect(kept.fetched_at).toBe(new Date(NOW - 2 * day).toISOString());
+  expect(kinds.places.fetch).not.toHaveBeenCalled();
+
+  const retried = await (await makeHandler(memoryCache(aged('photon')), kinds, () => NOW)(get('kind=places&lat=1&lon=1'))).json();
+  expect(retried).toMatchObject({ source: 'overpass', stale: false });
+  expect(kinds.places.fetch).toHaveBeenCalledTimes(1);
+});

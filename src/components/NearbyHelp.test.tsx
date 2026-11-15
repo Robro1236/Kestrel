@@ -52,3 +52,15 @@ test('NearbyHelp: changing location clears the old places while loading', async 
   answer({ ok: true, json: async () => result('Nairobi Chemist') });
   expect(await screen.findByText(/Nairobi Chemist/)).toBeTruthy();
 });
+
+// protects=users are told when the list is the shorter Photon fallback; fails_when=a photon-sourced result shows no note, or an Overpass one shows it; no_claim=the function reports source correctly (lookup.test.ts covers that)
+test('NearbyHelp: says when places came from the Photon fallback', async () => {
+  globalThis.fetch = jest.fn().mockRejectedValue(new TypeError('Network request failed')) as unknown as typeof fetch;
+  const props = { lat: 37.78, lon: -121.54, inUs: false, county: null };
+  await render(<NearbyHelp {...props} saved={{ ...result('Grant Line Pharmacy'), source: 'photon' }} />);
+  expect(await screen.findByText(/some places may be missing/)).toBeTruthy();
+
+  await screen.rerender(<NearbyHelp {...props} saved={result('Walgreens')} />);
+  expect(await screen.findByText(/Walgreens/)).toBeTruthy();
+  expect(screen.queryByText(/some places may be missing/)).toBeNull();
+});

@@ -28,6 +28,7 @@ const cache = {
 Deno.serve(
   makeHandler(cache, {
     area: { ttlDays: 30, fetch: fetchArea },
-    places: { ttlDays: 7, fetch: fetchPlaces },
+    // Photon's shorter list is the Overpass-down fallback, so retry Overpass after a day, not a week.
+    places: { ttlDays: (p) => (p.source === 'photon' ? 1 : 7), fetch: fetchPlaces },
   }),
 );

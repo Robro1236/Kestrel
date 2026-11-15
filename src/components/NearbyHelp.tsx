@@ -5,7 +5,8 @@ import { fetchJson } from '../data/airQuality';
 import { distanceKm, type Category, type Place, type Shelter } from '../../supabase/functions/lookup/places';
 
 // lat/lon: the rounded point the lookup ran for.
-export type PlacesResult = { lat: number; lon: number; places: Place[]; shelters: Shelter[]; fetched_at: string; stale?: boolean };
+// source is missing on copies saved before the Photon fallback; those came from Overpass.
+export type PlacesResult = { lat: number; lon: number; places: Place[]; source?: 'overpass' | 'photon'; shelters: Shelter[]; fetched_at: string; stale?: boolean };
 
 const CATEGORY_LABELS: Record<Category, string> = {
   hospital: 'Hospital',
@@ -25,7 +26,7 @@ const LINKS = {
 
 const directions = (lat: number, lon: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
 
-// Uncached Overpass takes 25-34 s and the function waits up to 45 s for it.
+// Uncached Overpass takes 25-34 s; the function gives it 35 s, then falls back to Photon.
 export async function fetchNearby(lat: number, lon: number): Promise<PlacesResult> {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -114,6 +115,7 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
           })}
           <Text style={styles.source}>
             Data © OpenStreetMap contributors, fetched {result.fetched_at.slice(0, 10)}.
+            {result.source === 'photon' ? ' Found by name search (Photon) while the main source is down, so some places may be missing.' : ''}
             {result.stale ? ' The live source is down, so this is the last saved copy.' : ''}
           </Text>
         </>

@@ -2,6 +2,8 @@ import { useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AirBanner } from '../src/components/AirBanner';
+import { NearbyHelp, type PlacesResult } from '../src/components/NearbyHelp';
 import type { ResolvedLocation } from '../src/data/location';
 import { buildKit, type Hazard, type Household, type KitItem } from '../src/kit/rules';
 import { load, loadResult, save, saveResult, type Saved } from '../src/storage';
@@ -29,16 +31,18 @@ export default function Plan() {
   const [area, setArea] = useState<Saved<Area> | null>(null);
   const [areaFailed, setAreaFailed] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
+  const [places, setPlaces] = useState<PlacesResult | null>(null);
 
   // Render from what's saved first, then refresh the area in the background.
   useEffect(() => {
     let live = true;
     (async () => {
-      const [h, l, c, a] = await Promise.all([
+      const [h, l, c, a, p] = await Promise.all([
         load<Household>('household'),
         load<ResolvedLocation>('location'),
         load<string[]>('checked'),
         loadResult<Area>('area'),
+        loadResult<PlacesResult>('places'),
       ]);
       if (!live) return;
       if (!h || !l) return router.replace('/setup');
@@ -46,6 +50,7 @@ export default function Plan() {
       setPlace(l);
       setChecked(c ?? []);
       setArea(a);
+      setPlaces(p?.data ?? null);
       // Counter insert (recordPlanOnce in src/storage.ts) is deferred to T8; see docs/SPEC.md.
       try {
         const fresh = await lookup<Area>('area', l.lat, l.lon);
@@ -89,7 +94,8 @@ export default function Plan() {
         <Text style={styles.link}>Edit household</Text>
       </Pressable>
 
-      {/* T5 <Warnings /> goes here (only if active), then T7 <AirBanner /> (only if AQI > 100). */}
+      {/* T5 <Warnings /> goes here (only if active), above the air banner. */}
+      <AirBanner lat={place.lat} lon={place.lon} />
 
       <Text accessibilityRole="header" style={styles.heading}>Supply kit</Text>
       <Text style={styles.note}>
@@ -152,7 +158,15 @@ export default function Plan() {
         </>
       ) : null}
 
-      {/* T5 <WaterSafety />, then T5 <Hazards />, then T7 <NearbyHelp /> go here. */}
+      {/* T5 <WaterSafety />, then T5 <Hazards /> go here, above Nearby help. */}
+      <NearbyHelp
+        lat={place.lat}
+        lon={place.lon}
+        inUs={area?.data.in_us ?? false}
+        county={area?.data.county ?? null}
+        saved={places}
+        onResult={(r) => saveResult('places', r)}
+      />
     </ScrollView>
   );
 }

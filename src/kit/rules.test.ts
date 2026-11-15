@@ -1,4 +1,4 @@
-import { buildKit, waterGallons, type Hazard, type Household } from './rules';
+import { buildKit, KIT_GROUPS, waterGallons, type Hazard, type Household } from './rules';
 
 const base: Household = {
   adults: 2, seniors: 0, children: 0, infants: 0, dogs: 0, cats: 0, medication: false, mobility: false,
@@ -125,4 +125,19 @@ test('tips have no amount and essentials stay on the checklist', () => {
   expect(tips.filter((i) => i.qty)).toEqual([]);
   expect(kit.filter((i) => BASE_IDS.includes(i.id) && i.tip)).toEqual([]);
   expect(kit.find((i) => i.id === 'water')?.details).toBeTruthy();
+});
+
+// protects=every kit item lands in a named checklist section, basics by topic, household and hazard extras in their own; fails_when=an item has no group and vanishes from the plan, or a hazard item shows under the household; no_claim=the section names are the clearest wording
+test('groups: every item has a section, extras sorted by household and hazard', () => {
+  const all = ['earthquake', 'inland_flood', 'heat_wave', 'wildfire', 'hurricane', 'tornado', 'winter_weather'].map(rm);
+  const kit = buildKit({ ...base, infants: 1, children: 1, seniors: 1, dogs: 1, medication: true }, all);
+  for (const i of kit) expect(KIT_GROUPS).toContain(i.group);
+  const g = (id: string) => kit.find((i) => i.id === id)?.group;
+  expect(g('water')).toBe('Water and food');
+  expect(g('radio')).toBe('Light and power');
+  expect(g('cash')).toBe('Papers and money');
+  expect(g('diapers')).toBe('For your household');
+  expect(g('pet-food')).toBe('For your household');
+  expect(g('hurricane-batteries')).toBe("For your area's hazards");
+  expect(g('fire-n95')).toBe("For your area's hazards");
 });

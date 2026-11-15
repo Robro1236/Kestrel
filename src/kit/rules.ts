@@ -21,7 +21,23 @@ export type KitItem = {
   // Nice-to-have advice: shown apart from the checklist, no amount, not counted in progress.
   tip?: true;
   details?: string;
+  group: KitGroup;
 };
+
+// Checklist sections in screen order; the plan shows one card per group.
+export const KIT_GROUPS = ['Water and food', 'Light and power', 'Health and safety', 'Papers and money', 'For your household', "For your area's hazards"] as const;
+export type KitGroup = (typeof KIT_GROUPS)[number];
+
+const BASIC_GROUP: Record<string, KitGroup> = {
+  water: 'Water and food', food: 'Water and food', 'can-opener': 'Water and food',
+  flashlight: 'Light and power', radio: 'Light and power', charger: 'Light and power',
+  'first-aid': 'Health and safety', whistle: 'Health and safety', 'dust-masks': 'Health and safety', sanitation: 'Health and safety', wrench: 'Health and safety',
+  documents: 'Papers and money', cash: 'Papers and money', map: 'Papers and money',
+};
+const HAZARD_PREFIX = /^(eq|flood|heat|fire|hurricane|tornado|winter)-/;
+// Basic items have a fixed group; hazard items share a prefix; the rest depend on who lives there.
+export const groupOf = (id: string): KitGroup =>
+  BASIC_GROUP[id] ?? (HAZARD_PREFIX.test(id) ? "For your area's hazards" : 'For your household');
 
 const TIPS = new Set([
   'rash-cream', 'comfort', 'child-id', 'pet-photo', 'eq-strap', 'eq-gas', 'flood-route', 'flood-insurance',
@@ -87,7 +103,7 @@ export function buildKit(h: Household, hazards: Hazard[]): KitItem[] {
     source: KitItem['source'] = 'Ready.gov',
   ) =>
     items.push({
-      id, label, reason, source,
+      id, label, reason, source, group: groupOf(id),
       ...(qty ? { qty } : {}),
       ...(TIPS.has(id) ? { tip: true as const } : {}),
       ...(DETAILS[id] ? { details: DETAILS[id] } : {}),

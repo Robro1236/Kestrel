@@ -15,7 +15,7 @@ import { localDay } from '../src/date';
 import { airTier } from '../src/data/airQuality';
 import type { ResolvedLocation } from '../src/data/location';
 import { activeOnly, fetchWarnings, type Warnings as WarningsData } from '../src/data/nws';
-import { buildKit, type Hazard, type Household, type KitItem, waterGallons } from '../src/kit/rules';
+import { buildKit, KIT_GROUPS, type Hazard, type Household, type KitItem, waterGallons } from '../src/kit/rules';
 import { load, loadResult, recordPlanOnce, save, saveResult, type Saved } from '../src/storage';
 import { lookup, recordPlan } from '../src/supabase';
 import { spring } from '../src/motion';
@@ -177,38 +177,51 @@ export default function Plan() {
       <WaterSystem onlyIfPoor lat={place.lat} lon={place.lon} inUs={inUs} />
       {alerts.length ? <CountyHelp countyFips={area?.data.county_fips} /> : null}
 
-      <View style={ui.card}>
-      <View style={styles.progressRow}>
-        <Text accessibilityRole="header" style={ui.cardTitle}>Supply kit</Text>
+      <View style={[styles.progressRow, styles.kitLabel]}>
+        <Text accessibilityRole="header" style={ui.eyebrow}>Supply kit</Text>
         <Text style={styles.count}>{done}/{kit.length}</Text>
       </View>
-      {kit.map((item) => {
-        const on = checked.includes(item.id);
+      {/* One card per group, so the list reads in short sections. Checked items stay put: a tapped row never moves. */}
+      {KIT_GROUPS.map((g) => {
+        const items = kit.filter((i) => i.group === g);
+        if (!items.length) return null;
+        const got = items.filter((i) => checked.includes(i.id)).length;
         return (
-          <Info key={item.id} item={item} open={open} setOpen={setOpen}>
-          <Check on={on} label={item.qty ? `${item.label}, ${item.qty}` : item.label} onPress={() => toggle(item.id)}>
-            <View style={styles.itemText}>
-              <Text style={[styles.label, on && styles.labelOn]}>
-                {item.label}
-                {item.qty ? <Text style={styles.qty}>  {item.qty}</Text> : null}
-              </Text>
-              <Text style={styles.reason}>
-                {item.reason} <Text style={styles.source}>Source: {item.source}</Text>
+          <View key={g} style={ui.card}>
+            <View style={styles.progressRow}>
+              <Text accessibilityRole="header" style={ui.cardTitle}>{g}</Text>
+              <Text style={[styles.groupCount, got === items.length && styles.groupDone]}>
+                {got} of {items.length}
               </Text>
             </View>
-          </Check>
-          </Info>
+            {items.map((item) => {
+              const on = checked.includes(item.id);
+              return (
+                <Info key={item.id} item={item} open={open} setOpen={setOpen}>
+                <Check on={on} label={item.qty ? `${item.label}, ${item.qty}` : item.label} onPress={() => toggle(item.id)}>
+                  <View style={styles.itemText}>
+                    <Text style={[styles.label, on && styles.labelOn]}>
+                      {item.label}
+                      {item.qty ? <Text style={styles.qty}>  {item.qty}</Text> : null}
+                    </Text>
+                    <Text style={styles.reason}>
+                      {item.reason} <Text style={styles.source}>Source: {item.source}</Text>
+                    </Text>
+                  </View>
+                </Check>
+                </Info>
+              );
+            })}
+          </View>
         );
       })}
-      <Text style={[styles.source, styles.footnote]}>
+      <Text style={[styles.source, styles.kitLabel]}>
         {area
           ? `Sized for your area's hazards: FEMA National Risk Index, ${areaFailed ? 'saved' : 'fetched'} ${localDay(area.data.fetched_at)}.`
           : areaFailed
             ? "Couldn't load your area's hazards, so this is the basic kit."
             : "Checking your area's hazards…"}
       </Text>
-      </View>
-
 
       {tips.length ? (
         <View style={ui.card}>
@@ -326,5 +339,7 @@ const styles = StyleSheet.create({
   qty: { fontFamily: fonts.bold, color: colors.primary },
   reason: { fontFamily: fonts.body, fontSize: 14, color: colors.muted },
   source: { fontFamily: fonts.body, fontSize: 12, color: colors.subtle },
-  footnote: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10 },
+  kitLabel: { paddingHorizontal: 4 },
+  groupCount: { fontFamily: fonts.semi, fontSize: 13, fontVariant: ['tabular-nums'], color: colors.muted },
+  groupDone: { color: colors.success },
 });

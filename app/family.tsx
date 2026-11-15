@@ -66,6 +66,31 @@ export function petSlots(h: Pick<Household, 'dogs' | 'cats'> | null): string[] {
   return [...n('Dog', h?.dogs ?? 0), ...n('Cat', h?.cats ?? 0)];
 }
 
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+// "2 adults, 1 infant, 1 dog" for the card's header.
+export function householdSummary(h: Household): string {
+  const parts: [number, string, string?][] = [[h.adults, 'adult'], [h.seniors, 'senior'], [h.children, 'child', 'children'], [h.infants, 'infant'], [h.dogs, 'dog'], [h.cats, 'cat']];
+  return parts.filter(([n]) => n > 0).map(([n, one, many]) => plural(n, one, many)).join(', ');
+}
+
+// Section titles and hints that fit this household. Without a household, the general card.
+export function tailor(h: Household | null): { titles: Record<string, string>; hints: Partial<Record<keyof FamilyPlan, string>> } {
+  if (!h) return { titles: {}, hints: {} };
+  const people = h.adults + h.seniors + h.children + h.infants;
+  const hints: Partial<Record<keyof FamilyPlan, string>> = {};
+  if (people > 1) hints.contacts = `One per line: name and number for each of the ${people} people.`;
+  const medical = [
+    h.medication ? 'Someone takes daily medicine: list each one and the dose.' : '',
+    h.mobility ? 'Someone needs help to get around: note who helps them leave and any equipment they use.' : '',
+    h.infants ? "The baby's formula, food and any medicine." : '',
+  ].filter(Boolean);
+  if (medical.length) hints.medical = `Each person's allergies, medicines, conditions and devices. ${medical.join(' ')}`;
+  const kids = h.children + h.infants > 0;
+  if (!kids) hints.schools = 'Phone for each workplace, and where they take people in an emergency.';
+  return { titles: kids ? {} : { 'School and work': 'Work' }, hints };
+}
+
 // Shrinks the photo so a few fit in browser storage (~5 MB) and on the printed card.
 async function pickPhoto(): Promise<string | null> {
   const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'] });
@@ -133,8 +158,9 @@ export default function Family() {
     });
 
   const slots = petSlots(household);
-  // Shown for a household with pets, and kept for anyone who already filled it in.
-  const hasPets = slots.length > 0 || !!plan.pets.trim() || photos.some(Boolean);
+  const { titles, hints } = tailor(household);
+  // Shown when we don't know the household yet, for a household with pets, and for anyone who already filled it in.
+  const hasPets = !household || slots.length > 0 || !!plan.pets.trim() || photos.some(Boolean);
   const setPhoto = (i: number, uri: string) =>
     setPhotos((ps) => {
       const next = [...ps];
@@ -161,15 +187,19 @@ export default function Family() {
         <Text accessibilityRole="header" style={styles.title}>Family plan card</Text>
         <Text style={styles.note}>Fill it in together, then print it or share it so everyone has a copy. It is saved on this device only.</Text>
         <Text style={styles.label}>{KEY_NUMBERS}</Text>
+        <Text style={styles.note}>{household ? `Made for your household: ${householdSummary(household)}.` : 'Set up your household and this card fits who lives with you.'}</Text>
+        <Tap accessibilityRole="link" onPress={() => router.push('/setup')} style={styles.linkHit}>
+          <Text style={styles.link}>{household ? 'Edit household' : 'Set up household'}</Text>
+        </Tap>
       </View>
 
       {GROUPS.filter(([title]) => title !== 'Pets' || hasPets).map(([title, keys]) => (
         <View key={title} style={styles.card}>
-          <Text accessibilityRole="header" style={styles.groupTitle}>{title}</Text>
+          <Text accessibilityRole="header" style={styles.groupTitle}>{titles[title] ?? title}</Text>
           {FIELDS.filter((f) => keys.includes(f.key)).map((f) => (
             <View key={f.key} style={styles.field}>
               <Text style={styles.label} nativeID={`label-${f.key}`}>{f.label}</Text>
-              {f.hint ? <Text style={styles.hint}>{f.hint}</Text> : null}
+              {hints[f.key] ?? f.hint ? <Text style={styles.hint}>{hints[f.key] ?? f.hint}</Text> : null}
               <TextInput
                 accessibilityLabel={f.label}
                 aria-labelledby={`label-${f.key}`}
@@ -212,6 +242,16 @@ export default function Family() {
           ) : null}
         </View>
       ))}
+
+      {!hasPets ? (
+        <View style={styles.card}>
+          <Text accessibilityRole="header" style={styles.groupTitle}>Pets</Text>
+          <Text style={styles.note}>No pets in your household. Add them and you get a section for their details and photos.</Text>
+          <Tap accessibilityRole="link" onPress={() => router.push('/setup')} style={styles.linkHit}>
+            <Text style={styles.link}>Add pets</Text>
+          </Tap>
+        </View>
+      ) : null}
 
       <Tap accessibilityRole="button" style={styles.primary} onPress={print}>
         <Text style={styles.primaryText}>{Platform.OS === 'web' ? 'Print' : 'Share'}</Text>

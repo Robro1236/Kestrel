@@ -53,9 +53,16 @@ test('family: pet photos follow the household and print under Pets', async () =>
   expect(petSlots({ dogs: 2, cats: 1 })).toEqual(['Dog', 'Dog 2', 'Cat']);
   expect(petSlots(null)).toEqual([]);
 
+  // No household saved yet: the general card, pets included.
   await render(<Family />);
-  expect(await screen.findByText('Where to meet')).toBeTruthy();
-  expect(screen.queryByText('Pets')).toBeNull();
+  expect(await screen.findByLabelText('Add a photo of pet')).toBeTruthy();
+  await screen.unmount();
+
+  // A household without pets: no pet fields, just a way to add pets.
+  await AsyncStorage.setItem('household', JSON.stringify({ adults: 2, seniors: 0, children: 0, infants: 0, dogs: 0, cats: 0, medication: false, mobility: false }));
+  await render(<Family />);
+  expect(await screen.findByText('Add pets')).toBeTruthy();
+  expect(screen.queryByLabelText('Pet details')).toBeNull();
   await screen.unmount();
 
   await AsyncStorage.setItem('household', JSON.stringify({ dogs: 1, cats: 1 }));
@@ -68,4 +75,24 @@ test('family: pet photos follow the household and print under Pets', async () =>
   expect(html).toContain(`<dt>Pet details</dt><dd></dd><dd class="photos"><img src="${jpeg}" alt=""></dd>`);
   expect(html).not.toContain('javascript:');
   expect(cardHtml(EMPTY_PLAN, { pets: false })).not.toContain('<dt>Pet details</dt>');
+});
+
+// protects=the card's header, section titles and hints follow the household; fails_when=a household without kids still asks about schools, a medicine or mobility need isn't prompted, or the summary miscounts; no_claim=the hints are complete medical advice
+test('family: card is tailored to the household', async () => {
+  const { householdSummary, tailor } = require('../app/family');
+  const h = { adults: 2, seniors: 0, children: 0, infants: 1, dogs: 1, cats: 0, medication: true, mobility: false };
+  expect(householdSummary(h)).toBe('2 adults, 1 infant, 1 dog');
+  const t = tailor(h);
+  expect(t.titles['School and work']).toBeUndefined();
+  expect(t.hints.contacts).toContain('each of the 3 people');
+  expect(t.hints.medical).toContain('daily medicine');
+  expect(t.hints.medical).toContain("baby's formula");
+  expect(t.hints.medical).not.toContain('help to get around');
+  expect(tailor({ ...h, infants: 0 }).titles['School and work']).toBe('Work');
+  expect(tailor(null)).toEqual({ titles: {}, hints: {} });
+
+  await AsyncStorage.setItem('household', JSON.stringify(h));
+  await render(<Family />);
+  expect(await screen.findByText('Made for your household: 2 adults, 1 infant, 1 dog.')).toBeTruthy();
+  expect(screen.getByText('School and work')).toBeTruthy();
 });

@@ -4,7 +4,8 @@
 export const CATEGORIES = ['hospital', 'fire_station', 'police', 'pharmacy', 'food_bank'] as const;
 export type Category = (typeof CATEGORIES)[number];
 // phone: as tagged in OpenStreetMap; null when untagged or found through Photon, missing on copies saved before phones were added.
-export type Place = { category: Category; name: string | null; phone?: string | null; lat: number; lon: number; distance_km: number };
+// phone_source 'cms': the number came from the official CMS hospital list instead.
+export type Place = { category: Category; name: string | null; phone?: string | null; phone_source?: 'cms'; lat: number; lon: number; distance_km: number };
 export type Shelter = { name: string | null; address: string | null; lat: number; lon: number; distance_km: number };
 
 const RADIUS_M = 10_000;
@@ -173,14 +174,110 @@ async function shelters(lat: number, lon: number, f: Fetch): Promise<Shelter[]> 
   return out.sort((x, y) => x.distance_km - y.distance_km).slice(0, PER_CATEGORY);
 }
 
+// Official hospital list: CMS Hospital General Information (Medicare-certified hospitals), filtered to ones with an emergency department.
+// It has no coordinates, so it is found by county (from the FCC, as area.ts does) and by name to the OSM places.
+const CMS_URL = 'https://data.cms.gov/provider-data/api/1/datastore/query/xubh-q36u/0';
+export type ErHospital = { name: string; address: string; city: string; phone: string };
+
+const countyName = (s: string) => s.toUpperCase().replace(/ (COUNTY|PARISH|BOROUGH|CENSUS AREA|MUNICIPALITY|CITY AND BOROUGH)$/, '');
+
+type County = { name: string; state: string };
+
+async function countyAt(lat: number, lon: number, f: Fetch): Promise<County | null> {
+  const fcc = await getJson(f, `https://geo.fcc.gov/api/census/area?lat=${lat}&lon=${lon}&format=json`, {}, 10_000);
+  const c = fcc.results?.[0];
+  return typeof c?.county_name === 'string' && typeof c?.state_code === 'string' ? { name: countyName(c.county_name), state: c.state_code } : null;
+}
+
+async function cmsErs(c: County, f: Fetch): Promise<(ErHospital & { zip: string; state: string })[]> {
+  const params = new URLSearchParams({
+    'conditions[0][property]': 'countyparish',
+    'conditions[0][value]': c.name,
+    'conditions[1][property]': 'state',
+    'conditions[1][value]': c.state,
+    limit: '100',
+  });
+  const body = await getJson(f, `${CMS_URL}?${params}`, {}, 10_000);
+  return (body.results ?? [])
+    .filter((r: any) => r.emergency_services === 'Yes' && r.telephone_number && r.facility_name)
+    .map((r: any) => ({ name: r.facility_name, address: r.address ?? '', city: r.citytown ?? '', phone: r.telephone_number, zip: r.zip_code ?? '', state: c.state }));
+}
+
+// CMS has street addresses but no coordinates; the US Census geocoder places them. null when it can't, so that hospital sorts last.
+async function geocode(h: { address: string; city: string; state: string; zip: string }, f: Fetch): Promise<[number, number] | null> {
+  try {
+    const q = new URLSearchParams({ address: `${h.address}, ${h.city}, ${h.state} ${h.zip}`, benchmark: 'Public_AR_Current', format: 'json' });
+    const c = (await getJson(f, `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?${q}`, {}, 10_000)).result?.addressMatches?.[0]?.coordinates;
+    return typeof c?.x === 'number' && typeof c?.y === 'number' ? [c.y, c.x] : null;
+  } catch {
+    return null;
+  }
+}
+
+// Nearest first; hospitals the geocoder can't place keep their order at the end.
+async function byDistance(lat: number, lon: number, list: Awaited<ReturnType<typeof cmsErs>>, f: Fetch): Promise<ErHospital[]> {
+  const at = await Promise.all(list.map((h) => geocode(h, f)));
+  const d = at.map((p) => (p ? distanceKm(lat, lon, p[0], p[1]) : Infinity));
+  return list
+    .map((h, i) => ({ h, d: d[i], i }))
+    .sort((a, b) => a.d - b.d || a.i - b.i)
+    .map(({ h }) => ({ name: h.name, address: h.address, city: h.city, phone: h.phone }));
+}
+
+// About 25 km out in each direction: the nearest ER can be over the county line (Yuba City's is in the next county).
+const NEAR_DEG = 0.23;
+
+// The point's own county first, then the counties ~25 km around it. null when the own county's FCC or CMS lookup fails,
+// so the cache retries soon instead of keeping "no hospitals" for a week; a neighbor that fails is just left out.
+async function erHospitals(lat: number, lon: number, f: Fetch): Promise<{ hospitals: ErHospital[] | null; counties: string[] }> {
+  try {
+    const dLon = NEAR_DEG / Math.max(Math.cos((lat * Math.PI) / 180), 0.01);
+    const around = [[NEAR_DEG, 0], [-NEAR_DEG, 0], [0, dLon], [0, -dLon]].map(([a, b]) => countyAt(lat + a, lon + b, f).catch(() => null));
+    const own = await countyAt(lat, lon, f);
+    if (!own) return { hospitals: [], counties: [] };
+    const counties = [own];
+    for (const c of await Promise.all(around)) {
+      if (c && !counties.some((x) => x.name === c.name && x.state === c.state)) counties.push(c);
+    }
+    const [mine, ...rest] = await Promise.all(counties.map((c, i) => (i === 0 ? cmsErs(c, f) : cmsErs(c, f).catch(() => []))));
+    return { hospitals: await byDistance(lat, lon, [...mine, ...rest.flat()], f), counties: counties.map((c) => `${c.name}, ${c.state}`) };
+  } catch (e) {
+    console.error('CMS hospitals failed', e);
+    return { hospitals: null, counties: [] };
+  }
+}
+
+// Words that don't tell two hospitals apart.
+const FILLER = new Set(['THE', 'OF', 'AND', 'HOSPITAL', 'MEDICAL', 'CENTER', 'CENTRE', 'COMMUNITY', 'HEALTH', 'REGIONAL']);
+const words = (s: string) => new Set(s.toUpperCase().replace(/['’.]/g, '').split(/[^A-Z0-9]+/).filter((w) => w && !FILLER.has(w)));
+// shortcut: name words must be a subset one way or the other, so "Kaiser Permanente Manteca" misses "KAISER FOUNDATION HOSPITAL MANTECA"; fine while the CMS list also shows on its own.
+export function sameHospital(a: string, b: string) {
+  const [x, y] = [words(a), words(b)];
+  const sub = (p: Set<string>, q: Set<string>) => p.size > 0 && [...p].every((w) => q.has(w));
+  return sub(x, y) || sub(y, x);
+}
+
 // shortcut: a box around the 50 states and Puerto Rico (it also takes in parts of Canada and Mexico, where FEMA just returns none) and leaves out Guam; use the area lookup's country if that matters.
 const inUsBox = (lat: number, lon: number) => lat >= 17.5 && lat <= 72 && lon >= -180 && lon <= -64;
 
 // shortcut: shelters are cached with the places for 7 days, but they open and close within days; split them into their own kind with a ~1 h TTL if shelters matter for a real launch.
 export async function fetchPlaces(lat: number, lon: number, f: Fetch = fetch) {
-  // A shelter outage fails the lookup too: caching [] would say "no shelters" for 7 days. The handler serves the last row as stale.
-  // FEMA only covers the US, so other points skip it and a FEMA outage can't break them.
-  const [p, s] = await Promise.all([osmPlaces(lat, lon, f), inUsBox(lat, lon) ? shelters(lat, lon, f) : []]);
+  // A shelter outage gives null, not []: [] would say "no shelters" for 7 days, and failing the whole lookup threw away
+  // good places and ERs whenever FEMA was slow (it can take 60 s and 504). index.ts retries a null after a day.
+  // FEMA only covers the US, so other points skip it.
+  const us = inUsBox(lat, lon);
+  const fema = () =>
+    shelters(lat, lon, f).catch((e) => {
+      console.error('FEMA shelters failed', e);
+      return null;
+    });
+  const [p, s, cms] = await Promise.all([osmPlaces(lat, lon, f), us ? fema() : [], us ? erHospitals(lat, lon, f) : { hospitals: [], counties: [] }]);
+  const er = cms.hospitals;
+  // A hospital CMS lists gets CMS's phone number: official, and present even when OSM has none.
+  const places = p.places.map((pl) => {
+    const m = pl.category === 'hospital' && pl.name ? er?.find((h) => sameHospital(h.name, pl.name!)) : undefined;
+    return m ? { ...pl, phone: m.phone, phone_source: 'cms' as const } : pl;
+  });
   // lat/lon are the rounded request point, so the app can tell which location a saved copy belongs to.
-  return { lat, lon, places: p.places, source: p.source, shelters: s };
+  return { lat, lon, places, source: p.source, shelters: s, er_hospitals: er, er_counties: cms.counties, er_order: 'distance' };
 }

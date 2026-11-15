@@ -5,11 +5,19 @@ import { colors, fonts, ui } from '../theme';
 
 import { fetchJson } from '../data/airQuality';
 import { localDay } from '../date';
-import { distanceKm, type Category, type Place, type Shelter } from '../../supabase/functions/lookup/places';
+import { distanceKm, type Category, type ErHospital, type Place, type Shelter } from '../../supabase/functions/lookup/places';
 
 // lat/lon: the rounded point the lookup ran for.
 // source is missing on copies saved before the Photon fallback; those came from Overpass.
-export type PlacesResult = { lat: number; lon: number; places: Place[]; source?: 'overpass' | 'photon'; shelters: Shelter[]; fetched_at: string; stale?: boolean };
+// er_hospitals: the county's hospitals with an emergency room (CMS); null when that lookup failed, missing on older copies.
+export type PlacesResult = { lat: number; lon: number; places: Place[]; source?: 'overpass' | 'photon'; shelters: Shelter[] | null; er_hospitals?: ErHospital[] | null; fetched_at: string; stale?: boolean };
+
+// The county's ER hospitals, the ones in the place's own town first ("Tracy, California" -> TRACY).
+export function erByTown(r: PlacesResult | null | undefined, label: string | undefined): ErHospital[] {
+  const town = label?.split(',')[0].trim().toUpperCase();
+  const list = r?.er_hospitals ?? [];
+  return [...list.filter((h) => h.city === town), ...list.filter((h) => h.city !== town)];
+}
 
 const CATEGORY_LABELS: Record<Category, string> = {
   hospital: 'Hospital',
@@ -50,13 +58,15 @@ type Props = {
   lon: number;
   inUs: boolean;
   county: string | null;
+  // The place's label, to list ER hospitals in the same town first.
+  label?: string;
   // The last saved result (T4's storage) to show offline, and a callback to save a fresh one.
   saved?: PlacesResult | null;
   onResult?: (r: PlacesResult) => void;
 };
 
 // Loads on its own so the rest of the plan never waits for Overpass. One lookup per location.
-export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
+export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: Props) {
   const [fresh, setFresh] = useState<PlacesResult | null>(null);
   // Read every render: T4 loads `saved` from storage asynchronously, so it often arrives after mount.
   // Storage keeps one places copy, so it may be from another location; over ~1 km away it isn't "nearby" help.
@@ -133,10 +143,24 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
 
       {inUs ? (
         <>
+          {erByTown(result, label).length ? (
+            <View style={styles.section}>
+              <Text accessibilityRole="header" style={ui.cardTitle}>Emergency rooms in and near {county ?? 'your county'}</Text>
+              <Text style={styles.note}>Main hospital lines. In an emergency call 911.</Text>
+              {erByTown(result, label).slice(0, 5).map((h) => (
+                <View key={h.name} style={styles.row}>
+                  <Text style={styles.name}>{titleCase(h.name)}, {titleCase(h.city)}</Text>
+                  <Link url={telUrl(h.phone)} label={`Call ${titleCase(h.name)}, ${h.phone}`}>{h.phone}</Link>
+                </View>
+              ))}
+              <Text style={styles.source}>Source: CMS Hospital General Information (Medicare-certified hospitals), fetched {localDay(result!.fetched_at)}.</Text>
+            </View>
+          ) : null}
           <View style={styles.section}>
             <Text accessibilityRole="header" style={ui.cardTitle}>Shelters</Text>
             <Text style={styles.note}>Open during active disasters only.</Text>
-            {result?.shelters.map((s, i) => (
+            {result && !result.shelters ? <Text style={styles.note}>Couldn't reach FEMA's shelter list right now.</Text> : null}
+            {result?.shelters?.map((s, i) => (
               <View key={i} style={styles.row}>
                 <Text style={styles.name}>
                   {s.name ?? 'Shelter'}
@@ -148,7 +172,7 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
               </View>
             ))}
             <Link url={LINKS.redCrossShelters}>Red Cross: find an open shelter</Link>
-            {result ? (
+            {result?.shelters ? (
               <Text style={styles.source}>
                 Source: FEMA open shelters, fetched {localDay(result.fetched_at)}.
                 {result.stale ? ' The live source is down; these shelters may have closed since.' : ''}
@@ -188,6 +212,7 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
       {result ? (
         <Text style={[styles.source, styles.footnote]}>
           Places and phone numbers: data © OpenStreetMap contributors, fetched {localDay(result.fetched_at)}.
+          {result.places.some((p) => p.phone_source === 'cms') ? ' Hospital numbers come from the CMS hospital list where it has the hospital.' : ''}
           {result.source === 'photon' ? ' Found by name search (Photon) while the main source is down, so some places may be missing.' : ''}
           {result.stale ? ' The live source is down, so this is the last saved copy.' : ''}
         </Text>
@@ -195,6 +220,9 @@ export function NearbyHelp({ lat, lon, inUs, county, saved, onResult }: Props) {
     </>
   );
 }
+
+// CMS writes names in capitals.
+export const titleCase = (s: string) => s.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()).replace(/'S\b/g, "'s");
 
 // A Pressable, not a pressable Text, so keyboards can reach it and the tap target is 44 px tall.
 function Link({ url, label, children }: { url: string; label?: string; children: string }) {

@@ -1,6 +1,6 @@
 /** @jest-environment node */
 import { fetchArea, HAZARD_FIELDS } from './area';
-import { fetchPlaces } from './places';
+import { fetchPlaces, sameHospital } from './places';
 import { makeHandler, type Cache, type CacheRow } from './handler';
 import { buildKit } from '../../../src/kit/rules';
 
@@ -248,15 +248,15 @@ test('places: nearest 3 per category, ways use center, shelters need coordinates
   ]);
 });
 
-// protects=neither an Overpass nor a FEMA failure is cached as "nothing nearby" / "no shelters" for 7 days; fails_when=an Overpass timeout remark or a FEMA HTTP-200 error body resolves instead of throwing; no_claim=other Overpass error remarks are worded this way
-test('places: Overpass timeout remark and FEMA error both throw', async () => {
+// protects=neither an Overpass nor a FEMA failure is cached as "nothing nearby" / "no shelters" for 7 days, and a FEMA failure keeps the places; fails_when=an Overpass timeout remark resolves instead of throwing, or a FEMA HTTP-200 error body gives [] or fails the lookup; no_claim=other Overpass error remarks are worded this way
+test('places: Overpass timeout remark throws; a FEMA error gives null shelters', async () => {
   await expect(
     fetchPlaces(37.78, -121.54, fakePlaces({ elements: [], remark: 'runtime error: Query timed out in "query" at line 2 after 41 seconds.' })),
   ).rejects.toThrow('Overpass');
   const pharmacy = { type: 'node', lat: 37.79, lon: -121.54, tags: { amenity: 'pharmacy', name: 'Walgreens' } };
   await expect(
-    fetchPlaces(37.78, -121.54, fakePlaces({ elements: [pharmacy] }, { error: { code: 400, message: 'Invalid query' } })),
-  ).rejects.toThrow('FEMA');
+    fetchPlaces(37.78, -121.54, fakePlaces({ elements: [pharmacy] }, { error: { code: 400, message: 'Invalid query' } })).then((r) => [r.places.map((p) => p.name), r.shelters]),
+  ).resolves.toEqual([['Walgreens'], null]);
 });
 
 // protects=a FEMA outage never breaks Nearby help outside the US, where shelters aren't shown; fails_when=a non-US point still calls FEMA; no_claim=the US box matches every FEMA-covered place
@@ -273,7 +273,7 @@ test('places: falls back to the Overpass mirror, and names both servers when bot
   const calls: string[] = [];
   const mirrorUp = (async (input: string | URL | Request) => {
     const url = String(input);
-    calls.push(new URL(url).host);
+    if (!url.includes('geo.fcc.gov')) calls.push(new URL(url).host); // the CMS hospital lookup, not part of the Overpass order
     if (url.includes('overpass-api.de')) return new Response('Not Acceptable', { status: 406 });
     if (url.includes('maps.mail.ru')) return ok({ elements: [pharmacy] });
     return ok({ features: [] });
@@ -339,4 +339,67 @@ test('places: keeps the first OpenStreetMap phone number, null when untagged', a
   expect(result.places.map((p) => p.phone)).toEqual(['+1 209-555-0100', '(209) 555-0101', '+1 209 555 0102']);
   const none = await fetchPlaces(37.78, -121.54, fakePlaces({ elements: [place(37.79, { name: 'D' })] }));
   expect(none.places[0]).toHaveProperty('phone', null);
+});
+
+// protects=US hospitals get the official CMS phone number and the county's ER list rides along, and a CMS outage never breaks places; fails_when=a non-ER hospital is listed, an OSM hospital keeps no number though CMS has it, the wrong hospital's number is attached, or a CMS failure throws or reads as "no hospitals"; no_claim=CMS numbers are current or every OSM name matches its CMS name
+test('places: CMS emergency-room hospitals fill in hospital numbers', async () => {
+  expect(sameHospital("St. Joseph's Medical Center", "ST JOSEPH'S MEDICAL CENTER OF STOCKTON")).toBe(true);
+  expect(sameHospital('Sutter Tracy Community Hospital', 'SUTTER TRACY COMMUNITY HOSPITAL')).toBe(true);
+  expect(sameHospital('Doctors Hospital of Manteca', 'DAMERON HOSPITAL')).toBe(false);
+  expect(sameHospital('Hospital', 'DAMERON HOSPITAL')).toBe(false);
+
+  const cms = { results: [
+    { facility_name: 'SUTTER TRACY COMMUNITY HOSPITAL', citytown: 'TRACY', telephone_number: '(209) 835-1500', emergency_services: 'Yes', address: '1420 N TRACY BLVD' },
+    { facility_name: "ST JOSEPH'S BEHAVIORAL HEALTH CENTER", citytown: 'STOCKTON', telephone_number: '(209) 461-2000', emergency_services: 'No' },
+  ] };
+  const overpass = { elements: [{ type: 'node', lat: 37.79, lon: -121.54, tags: { amenity: 'hospital', name: 'Sutter Tracy Community Hospital' } }] };
+  const seen: string[] = [];
+  const up = (async (input: string | URL | Request) => {
+    const url = String(input);
+    seen.push(url);
+    if (url.includes('geo.fcc.gov')) return ok({ results: [{ county_name: 'San Joaquin County', state_code: 'CA' }] });
+    if (url.includes('data.cms.gov')) return ok(cms);
+    return fakePlaces(overpass)(input);
+  }) as typeof fetch;
+  const r = await fetchPlaces(37.78, -121.54, up);
+  expect(seen.find((u) => u.includes('data.cms.gov'))).toContain('SAN+JOAQUIN');
+  expect(r.er_hospitals).toEqual([{ name: 'SUTTER TRACY COMMUNITY HOSPITAL', address: '1420 N TRACY BLVD', city: 'TRACY', phone: '(209) 835-1500' }]);
+  expect(r.places[0]).toMatchObject({ phone: '(209) 835-1500', phone_source: 'cms' });
+
+  // fakePlaces has no FCC or CMS: places still load, and er_hospitals is null so the cache retries.
+  const down = await fetchPlaces(37.78, -121.54, fakePlaces(overpass));
+  expect(down.places[0]).toMatchObject({ phone: null });
+  expect(down.er_hospitals).toBeNull();
+});
+
+// protects=a town whose own county has no ER (Yuba City, Sutter County) still gets the ER over the county line, nearest first, and a failing neighbor lookup is skipped; fails_when=only the own county is searched, a county is queried twice, a far ER is listed before a near one, or one neighbor's outage drops the whole list; no_claim=four points ~25 km out catch every neighboring county
+test('places: ERs in neighboring counties are included', async () => {
+  const er = (name: string, city: string) => ({ facility_name: name, citytown: city, telephone_number: '(530) 555-0100', emergency_services: 'Yes' });
+  const cms: Record<string, object[]> = { SUTTER: [{ ...er('SUTTER SURGICAL HOSPITAL', 'YUBA CITY'), emergency_services: 'No' }], YUBA: [er('ADVENTIST RIDEOUT', 'MARYSVILLE')], BUTTE: [er('OROVILLE HOSPITAL', 'OROVILLE')] };
+  const cmsCalls: string[] = [];
+  const up = (async (input: string | URL | Request) => {
+    const url = new URL(String(input));
+    if (url.host === 'geo.fcc.gov') {
+      const lat = Number(url.searchParams.get('lat')), lon = Number(url.searchParams.get('lon'));
+      if (lat > 39.3) throw new Error('down');
+      return ok({ results: [{ county_name: lon > -121.6 ? 'Yuba County' : lat < 39 ? 'Butte County' : 'Sutter County', state_code: 'CA' }] });
+    }
+    if (url.host === 'data.cms.gov') {
+      const county = url.searchParams.get('conditions[0][value]')!;
+      cmsCalls.push(county);
+      return ok({ results: cms[county] ?? [] });
+    }
+    // Census geocoder: Marysville is ~3 km away, Oroville ~40 km.
+    if (url.host === 'geocoding.geo.census.gov') {
+      const x = url.searchParams.get('address')!.includes('MARYSVILLE') ? { x: -121.595, y: 39.139 } : { x: -121.55, y: 39.5 };
+      return ok({ result: { addressMatches: [{ coordinates: x }] } });
+    }
+    return fakePlaces({ elements: [] })(input);
+  }) as typeof fetch;
+  const r = await fetchPlaces(39.14, -121.62, up);
+  expect(cmsCalls.sort()).toEqual(['BUTTE', 'SUTTER', 'YUBA']);
+  expect(r.er_counties[0]).toBe('SUTTER, CA');
+  // Butte's point is sampled before Yuba's, so without sorting Oroville would come first.
+  expect(r.er_hospitals?.map((h) => h.city)).toEqual(['MARYSVILLE', 'OROVILLE']);
+  expect(r.er_hospitals?.map((h) => h.city).sort()).toEqual(['MARYSVILLE', 'OROVILLE']);
 });

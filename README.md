@@ -6,6 +6,12 @@ It's free. You don't need an account and you don't install anything.
 
 Code: https://github.com/Robro1236/Kestrel
 
+### ⚡ Quick start (30 seconds)
+
+1. On your **phone**, open **kestrel-tan.vercel.app/?start**
+2. Tap **Make my plan** → **Use my location** (or type a ZIP code and tap the match) → add who lives with you → tap **Build my kit**.
+3. That's your plan. Tap **☰** (top right) to see everything else.
+
 ---
 
 ## What is Kestrel?
@@ -90,7 +96,7 @@ You'll see:
 Choose **one** of these:
 
 - **Easiest:** tap **Use my location**. Your phone will ask *"Allow Kestrel to use your location?"* Tap **Allow**. Kestrel finds your town by itself.
-- **Or type it:** tap the box that says *"or type a US ZIP code or a city"*, and type your ZIP code (like **95376**) or your city (like **Tracy, CA**). A list of matches pops up underneath. **Tap the right one.** (If you don't tap a match, it won't be picked.)
+- **Or type it:** tap the box that says *"or type a US ZIP code or a city"*, and type your ZIP code (like **95376**) or your city (like **Tracy, CA**). A list of matches pops up underneath. **Tap the right one** to be sure Kestrel picks the correct place. (If you don't tap one, Kestrel uses its best match for what you typed.)
 
 ### Step 3: "Who is in your household?"
 
@@ -281,9 +287,34 @@ Tap **Reset this device**, then tap again when it says **"Tap again to erase"**.
 ## Good things to know
 
 - **Works without internet.** After you open Kestrel once, your plan, kit and family card still open with no signal, which is exactly when you might need them. The plan shows the date it was saved.
-- **Private.** No account, no sign-up. Everything stays on your phone.
+- **Private.** No account, no sign-up, no name or email asked for.
+  - **Stays on your phone only:** who lives with you, your checklist, and everything on your family plan card (names, phones, medical info, photos).
+  - **Sent to our server:** your location (or the ZIP code or city you typed), only so Kestrel can look up the hazards, weather warnings, water system and nearby places for that spot. Nothing else about you (no name, no household, no account) is sent with it.
+  - **Counted:** making a plan adds 1 to the "households prepared" number. Only the number goes up; nothing about you is sent with it.
 - **Where it works:** the kit, water advice and nearby help work **anywhere in the world**. Local hazards, weather warnings and the water system record are **US only**.
 - **Sources:** FEMA National Risk Index, National Weather Service, EPA drinking-water records, CMS hospital list, Ready.gov, OpenStreetMap and Open-Meteo.
+
+---
+
+## If something goes wrong
+
+| What you see | What to do |
+|---|---|
+| *"We couldn't get your location. Type a ZIP code or a city name instead."* | You tapped **Don't Allow**, or your phone's location is off. Just type your ZIP code or city in the box instead. (To use location later, turn on Location for your browser in your phone's settings.) |
+| *"Add at least one person to your household."* | Tap **+** next to at least one row (count yourself!), then tap **Build my kit** again. |
+| *"We couldn't find that place. Try a ZIP code or a city name."* | Check the spelling, or try your ZIP code instead. |
+| *"Couldn't reach the location service. Check your connection and try again."* | You have no internet. Connect to Wi-Fi or turn on mobile data, then try again. |
+| *"Couldn't load your area's hazards, so this is the basic kit."* | The hazard data didn't load (usually a weak connection). Your basic kit is still right. Come back later and the hazard items will be added. |
+| *"Couldn't load nearby places right now."* | Weak or no connection. If you looked before, Kestrel shows the list it saved last time, with that date. |
+| *"Not found within 6 miles"* (or *10 km*) | There's no place of that type close to you. It isn't an error. |
+| *"…some places may be missing."* under Nearby help | The main map source was down, so Kestrel used a backup that finds fewer places. Check again later. |
+| *"Couldn't load your county…"* or *"Couldn't load FEMA's disaster history right now…"* | No connection, or the government site is slow. Try again in a minute. |
+| *"Couldn't add that photo. Try another one."* | Pick a different photo (a normal camera photo works best). |
+| The app won't open with **no internet** | Offline only works **after you've opened Kestrel once with internet**. Open it once while connected and it will work offline after that. |
+| You want to change where you live or who lives with you | On your plan, tap **Edit household**. |
+| A checkbox was tapped by mistake | Tap it again to uncheck it. |
+| You want to start over completely | **☰** → **Reset this device** → tap again to confirm. Or open **kestrel-tan.vercel.app/?start**. |
+| Something still looks wrong | Close the browser tab, open the link again, and pull down on the page to refresh. |
 
 ---
 

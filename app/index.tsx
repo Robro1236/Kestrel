@@ -1,22 +1,36 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import type { IconName } from '../src/components/Icon';
+import { IconBadge } from '../src/components/Steps';
 import { Tap } from '../src/components/Tap';
 import { load } from '../src/storage';
 import { preparedCount } from '../src/supabase';
-import { colors, fonts, ui } from '../src/theme';
+import { colors, fonts, headerPad, ui } from '../src/theme';
 
-const POINTS: [string, string][] = [
-  ['Sized to you', 'Water, food and medicine for exactly who lives with you.'],
-  ['Local risks', 'FEMA hazards, live NWS warnings and EPA water records.'],
-  ['Works offline', 'Saved on your device, ready when the network is down.'],
+const POINTS: [IconName, string, string][] = [
+  ['people', 'Sized to you', 'Water, food and medicine for exactly who lives with you.'],
+  ['pin', 'Local risks', 'FEMA hazards, live NWS warnings and EPA water records.'],
+  ['phone', 'Works offline', 'Saved on your device, ready when the network is down.'],
 ];
+
+// Once per app launch: a returning user goes straight to their plan. Later visits (About Kestrel, Back) stay here.
+// shortcut: a deep link to another page, then Home, still redirects once; track the first route if that matters.
+let opened = false;
 
 export default function Home() {
   const router = useRouter();
   const [hasPlan, setHasPlan] = useState(false);
   const [count, setCount] = useState<number | null>(null);
+  // Blank while the launch check runs, so the welcome page doesn't flash before the redirect.
+  const [ready, setReady] = useState(opened);
+  useEffect(() => {
+    if (opened) return;
+    opened = true;
+    if (router.canGoBack()) return setReady(true);
+    Promise.all([load('household'), load('location')]).then(([h, l]) => (h && l ? router.replace('/plan') : setReady(true)));
+  }, [router]);
 
   // On focus, so "View my plan" and a fresh count appear after building a kit. A null count (any failure) is hidden.
   useFocusEffect(
@@ -26,6 +40,7 @@ export default function Home() {
     }, []),
   );
 
+  if (!ready) return null;
   return (
     <ScrollView contentContainerStyle={[ui.screen, styles.container]}>
       <View style={styles.mark}>
@@ -51,10 +66,13 @@ export default function Home() {
         </Text>
       ) : null}
       <View style={styles.points}>
-        {POINTS.map(([title, body]) => (
+        {POINTS.map(([icon, title, body]) => (
           <View key={title} style={[ui.card, styles.point]}>
-            <Text style={styles.pointTitle}>{title}</Text>
-            <Text style={styles.pointBody}>{body}</Text>
+            <IconBadge name={icon} />
+            <View style={styles.pointText}>
+              <Text style={styles.pointTitle}>{title}</Text>
+              <Text style={styles.pointBody}>{body}</Text>
+            </View>
           </View>
         ))}
       </View>
@@ -63,7 +81,7 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 32 },
+  container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 32 + headerPad },
   mark: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(15,94,87,0.28)' },
   markText: { fontFamily: fonts.display, color: '#fff', fontSize: 32 },
   title: { fontFamily: fonts.display, fontSize: 48, color: colors.ink, letterSpacing: -1, marginTop: 6 },
@@ -75,7 +93,8 @@ const styles = StyleSheet.create({
   secondaryText: { fontFamily: fonts.bold, color: colors.primary, fontSize: 16 },
   count: { fontFamily: fonts.semi, fontSize: 14, fontVariant: ['tabular-nums'], color: colors.success, backgroundColor: colors.successSoft, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, overflow: 'hidden' },
   points: { width: '100%', gap: 10, marginTop: 14 },
-  point: { gap: 4, padding: 16 },
+  point: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
+  pointText: { flex: 1, gap: 4 },
   pointTitle: { fontFamily: fonts.bold, fontSize: 16, color: colors.ink },
   pointBody: { fontFamily: fonts.body, fontSize: 14, color: colors.muted },
 });

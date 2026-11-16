@@ -1,12 +1,14 @@
 import { useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, View, type ViewInstance } from 'react-native';
 
 import { Tap } from '../src/components/Tap';
 import { AirBanner, useAirQuality } from '../src/components/AirBanner';
+import { DONE_HOLD_MS, DoneOverlay, type Spark, SparkDot } from '../src/components/Celebrate';
 import { Collapse } from '../src/components/Collapse';
 import { CountyHelp } from '../src/components/CountyHelp';
 import { FamilyPlanLink } from '../src/components/FamilyPlanLink';
+import { headerShown } from '../src/components/Header';
 import { Icon } from '../src/components/Icon';
 import { KitReminders } from '../src/components/KitReminders';
 import { Warnings } from '../src/components/Warnings';
@@ -21,7 +23,7 @@ import { buildKit, KIT_GROUPS, type Hazard, type Household, type KitItem, waterG
 import { load, loadResult, recordPlanOnce, save, saveResult, type Saved } from '../src/storage';
 import { lookup, recordPlan } from '../src/supabase';
 import { spring } from '../src/motion';
-import { colors, fonts, ui } from '../src/theme';
+import { colors, fonts, headerPad, ui } from '../src/theme';
 
 // Response of lookup?kind=area (see docs/SPEC.md).
 export type Area = {
@@ -110,11 +112,50 @@ export default function Plan() {
   const [pinned, setPinned] = useState(false);
   const strip = useRef(new Animated.Value(0)).current;
   useEffect(() => spring(strip, pinned ? 1 : 0), [strip, pinned]);
+  // The strip rides just under the header (web: it floats and slides away).
+  const under = headerShown.interpolate({ inputRange: [0, 1], outputRange: [0, headerPad], extrapolate: 'clamp' });
 
-  const toggle = (id: string) => {
+  // On each check, green sparks fly from the box into the bar. Positions are in the page's coordinates.
+  const page = useRef<ViewInstance>(null);
+  const track = useRef<ViewInstance>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const scrollNow = useRef(0);
+  const sparkId = useRef(0);
+  const [sparks, setSparks] = useState<Spark[]>([]);
+  const fly = (box: ViewInstance | null | undefined, toPct: number) =>
+    page.current?.measureInWindow((px, py) =>
+      box?.measureInWindow((bx, by, bw, bh) => track.current?.measureInWindow((tx, ty, tw, th) => {
+        // The hero bar's centre moves with scrolling; once it's above the pinned strip, aim at the strip instead.
+        const base = ty - py + th / 2 + scrollNow.current;
+        const hero = scrollY.interpolate({ inputRange: [0, 1], outputRange: [base, base - 1] });
+        const stripMid = headerShown.interpolate({ inputRange: [0, 1], outputRange: [21, 21 + headerPad], extrapolate: 'clamp' });
+        const targetY = Animated.add(stripMid, Animated.subtract(hero, stripMid).interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolateLeft: 'clamp' }));
+        // shortcut: x aims at the hero bar's fill edge even when the narrower strip is showing; measure the strip too if that looks off.
+        const x = tx - px + (tw * toPct) / 100;
+        const born = [0, 1, 2, 3, 4].map((i) => ({
+          id: ++sparkId.current, x: bx + bw / 2 - px + (i - 2) * 2, y: by + bh / 2 - py + (i % 2 ? 2 : -2), tx: x, targetY, delay: i * 45,
+        }));
+        setSparks((s) => [...s, ...born]);
+      })),
+    );
+  // Kit cards that just got their last check: greyed with a big check until they fold.
+  const [celebrating, setCelebrating] = useState<string[]>([]);
+  // Pending un-celebrate timers, cleared on leaving so they never update a gone screen.
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]).current;
+  useEffect(() => () => timers.forEach(clearTimeout), [timers]);
+
+  const toggle = (id: string, box?: ViewInstance | null) => {
     // A check hands the card back to the auto rule, so finishing it folds it even if it was opened by hand.
     const g = kit.find((i) => i.id === id)?.group;
     if (g && g in fold) setFold(({ [g]: _, ...rest }) => rest);
+    const adding = !checked.includes(id);
+    if (g) {
+      // Only a check that finishes the card celebrates; an uncheck mid-animation cancels it.
+      const complete = adding && kit.filter((i) => i.group === g).every((i) => i.id === id || checked.includes(i.id));
+      setCelebrating((c) => (complete ? [...c, g] : c.filter((x) => x !== g)));
+      if (complete) timers.push(setTimeout(() => setCelebrating((c) => c.filter((x) => x !== g)), DONE_HOLD_MS + 500));
+    }
+    if (adding && kit.length) fly(box, Math.round(((done + 1) / kit.length) * 100));
     setChecked((c) => {
       const next = c.includes(id) ? c.filter((x) => x !== id) : [...c, id];
       save('checked', next);
@@ -138,11 +179,16 @@ export default function Plan() {
   const alerts = activeOnly(warnings?.data.alerts ?? []).map((a) => a.event);
 
   return (
-    <View style={styles.page}>
+    <View ref={page} style={styles.page}>
     <ScrollView
       contentContainerStyle={ui.screen}
       scrollEventThrottle={16}
-      onScroll={(e) => setPinned(e.nativeEvent.contentOffset.y > bar.heroY + bar.bottom)}
+      onScroll={(e) => {
+        const y = e.nativeEvent.contentOffset.y;
+        scrollNow.current = y;
+        scrollY.setValue(y);
+        setPinned(y > bar.heroY + bar.bottom);
+      }}
     >
       <View style={[ui.card, styles.hero]} onLayout={(e) => (bar.heroY = e.nativeEvent.layout.y)}>
         <Text style={ui.eyebrow}>{place.label}</Text>
@@ -157,6 +203,7 @@ export default function Plan() {
           accessibilityRole="progressbar"
           accessibilityLabel="Kit progress"
           accessibilityValue={{ min: 0, max: kit.length, now: done }}
+          ref={track}
           style={styles.track}
           onLayout={(e) => (bar.bottom = e.nativeEvent.layout.y + e.nativeEvent.layout.height)}
         >
@@ -223,12 +270,12 @@ export default function Plan() {
               </View>
             </Tap>
             {/* Folding by hand is instant; folding because the card is now complete waits a beat. */}
-            <Collapse open={!folded} closeDelay={g in fold ? 0 : 600} style={styles.groupBody}>
+            <Collapse open={!folded} closeDelay={g in fold ? 0 : DONE_HOLD_MS} style={styles.groupBody}>
             {items.map((item) => {
               const on = checked.includes(item.id);
               return (
                 <Info key={item.id} item={item} open={open} setOpen={setOpen}>
-                <Check on={on} label={item.qty ? `${item.label}, ${item.qty}` : item.label} onPress={() => toggle(item.id)}>
+                <Check on={on} label={item.qty ? `${item.label}, ${item.qty}` : item.label} onPress={(box) => toggle(item.id, box)}>
                   <View style={styles.itemText}>
                     <Text style={[styles.label, on && styles.labelOn]}>
                       {item.label}
@@ -243,6 +290,7 @@ export default function Plan() {
               );
             })}
             </Collapse>
+            {celebrating.includes(g) ? <DoneOverlay /> : null}
           </View>
         );
       })}
@@ -276,7 +324,7 @@ export default function Plan() {
       aria-hidden
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.strip, { opacity: strip, transform: [{ translateY: strip.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] }) }] }]}
+      style={[styles.strip, { opacity: strip, transform: [{ translateY: Animated.add(under, strip.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] })) }] }]}
     >
       <Text style={styles.note}>{done} of {kit.length} ready</Text>
       <View style={[styles.track, styles.stripTrack]}>
@@ -284,24 +332,27 @@ export default function Plan() {
       </View>
       <Text style={styles.pct}>{pct}%</Text>
     </Animated.View>
+    {sparks.map((s) => <SparkDot key={s.id} spark={s} onDone={(id) => setSparks((all) => all.filter((x) => x.id !== id))} />)}
     </View>
   );
 }
 
 // The box dips while held and pops back on release, so even a quick tap visibly registers.
-function Check({ on, label, onPress, children }: { on: boolean; label: string; onPress: () => void; children: ReactNode }) {
+function Check({ on, label, onPress, children }: { on: boolean; label: string; onPress: (box: ViewInstance | null) => void; children: ReactNode }) {
   const scale = useRef(new Animated.Value(1)).current;
+  const box = useRef<ViewInstance>(null); // the sparks start from here
+
   return (
     <Pressable
       accessibilityRole="checkbox"
       accessibilityState={{ checked: on }}
       accessibilityLabel={label}
-      onPress={onPress}
+      onPress={() => onPress(box.current)}
       onPressIn={() => spring(scale, 0.78)}
       onPressOut={() => spring(scale, 1, { bouncy: true })}
       style={styles.item}
     >
-      <Animated.View style={[styles.box, on && styles.boxOn, { transform: [{ perspective: 1000 }, { scale }] }]}>
+      <Animated.View ref={box} style={[styles.box, on && styles.boxOn, { transform: [{ perspective: 1000 }, { scale }] }]}>
         {on ? <Icon name="check" size={16} color="#fff" weight={3} /> : null}
       </Animated.View>
       {children}

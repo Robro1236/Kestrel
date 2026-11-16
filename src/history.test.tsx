@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 
 import History from '../app/history';
@@ -35,6 +35,8 @@ test('History: timeline, details card, full screen and FEMA source', async () =>
   await fireEvent.press(screen.getByLabelText('Full screen'));
   expect(screen.getByRole('header', { name: 'Hurricane' })).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Exit full screen'));
+  // It shrinks away first, then unmounts.
+  await waitFor(() => expect(screen.queryByLabelText('Exit full screen')).toBeNull());
   expect(screen.queryByRole('header', { name: 'Hurricane' })).toBeNull();
   await screen.unmount();
 

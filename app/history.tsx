@@ -9,7 +9,7 @@ import { type Declaration, declarationPage, fetchDeclarations } from '../src/dat
 import { localDay } from '../src/date';
 import { popIn, spring } from '../src/motion';
 import { useLocalArea } from '../src/useLocalArea';
-import { colors, fonts, ui } from '../src/theme';
+import { colors, fonts, headerPad, ui } from '../src/theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -66,35 +66,17 @@ export default function HistoryScreen() {
             {/* One spine down the middle; entries alternate sides, each joined to it by a short branch. */}
             <View style={styles.timeline}>
               <View style={styles.spine} />
-              {list.map((d, i) => {
-                const left = i % 2 === 0;
-                const align = left ? styles.right : null;
-                const on = d.id === active;
-                return (
-                  // Left entries flip the row so the branch always sits next to the dot.
-                  <View key={d.id} style={[styles.row, left && styles.flip, on && styles.raised]}>
-                    {/* The blank side: flipped the other way, so its branch also touches the dot. */}
-                    <View style={[styles.side, !left && styles.flip]}>{on ? <Details d={d} fromLeft={left} up={i > 1 && i >= list.length - 2} onExpand={() => setFull(d)} /> : null}</View>
-                    <Tap
-                      accessibilityRole="button"
-                      accessibilityLabel={`Details: ${d.type}, ${d.date}`}
-                      accessibilityState={{ expanded: on }}
-                      hitSlop={16}
-                      onPress={() => setActive(on ? null : d.id)}
-                      style={[styles.dot, on && styles.dotOn]}
-                    />
-                    <View style={[styles.side, left && styles.flip]}>
-                      <View style={[styles.branch, on && styles.on]} />
-                      {/* The text opens the same card as the dot; the dot stays the one control screen readers hear. */}
-                      <Tap accessible={false} focusable={false} onPress={() => setActive(on ? null : d.id)} style={styles.entry}>
-                        <Text style={[styles.date, align]}>{d.date}</Text>
-                        <Text style={[styles.type, align, on && styles.typeOn]}>{d.type}</Text>
-                        {d.name ? <Text style={[styles.name, align]}>{d.name}</Text> : null}
-                      </Tap>
-                    </View>
-                  </View>
-                );
-              })}
+              {list.map((d, i) => (
+                <Event
+                  key={d.id}
+                  d={d}
+                  left={i % 2 === 0}
+                  on={d.id === active}
+                  up={i > 1 && i >= list.length - 2}
+                  onToggle={() => setActive(d.id === active ? null : d.id)}
+                  onExpand={() => setFull(d)}
+                />
+              ))}
             </View>
             {/* The spine stops at a cap, so the end of FEMA's records reads as the end, not a page that failed to load more. */}
             <View style={styles.end}>
@@ -111,16 +93,73 @@ export default function HistoryScreen() {
   );
 }
 
+// One event on the timeline. Selecting it springs the dot (it grows and fills) and both branches (they draw out from the dot)
+// on the same pop spring as the card, so the whole row moves as one; a press dips the dot, branch and text together.
+function Event({ d, left, on, up, onToggle, onExpand }: { d: Declaration; left: boolean; on: boolean; up: boolean; onToggle: () => void; onExpand: () => void }) {
+  const press = useRef(new Animated.Value(1)).current;
+  const sel = useRef(new Animated.Value(on ? 1 : 0)).current;
+  // The card stays until the close spring settles, so it shrinks away with the dot instead of vanishing.
+  const [mounted, setMounted] = useState(on);
+  const onNow = useRef(on);
+  useEffect(() => {
+    onNow.current = on;
+    if (on) setMounted(true);
+    // Only a close unmounts. onDone also runs when a spring is cut short, so a close cut short by reopening checks onNow.
+    spring(sel, on ? 1 : 0, { pop: true }, on ? undefined : () => onNow.current || setMounted(false));
+  }, [sel, on]);
+  const align = left ? styles.right : null;
+  return (
+    // Left entries flip the row so the branch always sits next to the dot.
+    <View style={[styles.row, left && styles.flip, on ? styles.raised : mounted && styles.closing]}>
+      {/* The blank side: flipped the other way, so its branch also touches the dot. */}
+      <View style={[styles.side, !left && styles.flip]}>{mounted ? <Details shown={sel} d={d} fromLeft={left} up={up} onExpand={onExpand} /> : null}</View>
+      <Animated.View style={{ transform: [{ scale: sel.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] }) }] }}>
+        <Tap
+          accessibilityRole="button"
+          accessibilityLabel={`Details: ${d.type}, ${d.date}`}
+          accessibilityState={{ expanded: on }}
+          hitSlop={16}
+          onPress={onToggle}
+          scale={press}
+          style={styles.dot}
+        >
+          <Animated.View style={[styles.dotFill, { opacity: clamp01(sel), transform: [{ scale: sel.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) }] }]} />
+        </Tap>
+      </Animated.View>
+      <View style={[styles.side, left && styles.flip]}>
+        <Animated.View style={{ transform: [{ scale: press }] }}>
+          <Branch v={sel} from={left ? 'right' : 'left'} />
+        </Animated.View>
+        {/* The text opens the same card as the dot; the dot stays the one control screen readers hear. */}
+        <Tap accessible={false} focusable={false} onPress={onToggle} scale={press} style={styles.entry}>
+          <Text style={[styles.date, align]}>{d.date}</Text>
+          <Text style={[styles.type, align, on && styles.typeOn]}>{d.type}</Text>
+          {d.name ? <Text style={[styles.name, align]}>{d.name}</Text> : null}
+        </Tap>
+      </View>
+    </View>
+  );
+}
+
+// The spring overshoots; colour and length stop at full.
+const clamp01 = (v: Animated.Value) => v.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' });
+
+// A grey branch that fills with colour, drawn out from the dot's side (from).
+function Branch({ v, from }: { v: Animated.Value; from: 'left' | 'right' }) {
+  return (
+    <View style={styles.branch}>
+      <Animated.View style={[styles.branchFill, { transformOrigin: from, transform: [{ scaleX: clamp01(v) }] }]} />
+    </View>
+  );
+}
+
 // The details card. Floats over the events below instead of pushing them down, and grows out of the dot like the menu sheet does.
 // up: the last events open upward, so the card never hangs past the end of the page (not the first two: no room above).
-function Details({ d, fromLeft, up, onExpand }: { d: Declaration; fromLeft: boolean; up: boolean; onExpand: () => void }) {
-  const shown = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    spring(shown, 1, { pop: true });
-  }, [shown]);
+// shown: the row's selection spring, so the card opens and closes with its dot.
+function Details({ shown, d, fromLeft, up, onExpand }: { shown: Animated.Value; d: Declaration; fromLeft: boolean; up: boolean; onExpand: () => void }) {
   return (
     <>
-      <View style={[styles.branch, styles.on]} />
+      <Branch v={shown} from={fromLeft ? 'left' : 'right'} />
       <View style={styles.anchor}>
         {/* A pressable with no action: it claims taps inside the card, so they don't count as tapping outside it. */}
         <AnimatedPressable
@@ -151,6 +190,8 @@ function FullDetails({ d, onClose }: { d: Declaration; onClose: () => void }) {
   useEffect(() => {
     spring(shown, 1, { pop: true });
   }, [shown]);
+  // Shrinks back the way it grew, then unmounts.
+  const close = () => spring(shown, 0, { pop: true }, onClose);
   return (
     <Animated.View accessibilityViewIsModal style={[styles.full, popIn(shown, 8)]}>
       <ScrollView contentContainerStyle={[ui.screen, styles.fullBody]}>
@@ -161,7 +202,7 @@ function FullDetails({ d, onClose }: { d: Declaration; onClose: () => void }) {
         </View>
         <Facts d={d} />
       </ScrollView>
-      <Tap accessibilityRole="button" accessibilityLabel="Exit full screen" onPress={onClose} style={[styles.corner, styles.exit]}>
+      <Tap accessibilityRole="button" accessibilityLabel="Exit full screen" onPress={close} style={[styles.corner, styles.exit]}>
         <Icon name="close" size={22} color={colors.muted} />
       </Tap>
     </Animated.View>
@@ -195,17 +236,20 @@ function Facts({ d }: { d: Declaration }) {
 }
 
 const styles = StyleSheet.create({
-  raised: { zIndex: 1 },
+  raised: { zIndex: 2 },
+  // A card still shrinking away sits under the one just opened, so its row's text can't show through the new card.
+  closing: { zIndex: 1 },
   fill: { flex: 1 },
   // The tap-to-close area reaches the bottom of the screen even when the page is short.
   grow: { flexGrow: 1 },
   // Covers the page below the app header, so it stays inside the safe area the layout already gives.
-  full: { ...StyleSheet.absoluteFill, zIndex: 2, backgroundColor: colors.bg },
-  fullBody: { gap: 16, paddingTop: 24 },
+  full: { ...StyleSheet.absoluteFill, zIndex: 3, backgroundColor: colors.bg },
+  fullBody: { gap: 16, paddingTop: 24 + headerPad },
   fullHead: { gap: 4, paddingRight: 48 },
   // 44px touch target in the card's top right; the card's first line leaves room for it.
   corner: { position: 'absolute', top: 0, right: 0, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  exit: { top: 12, right: 12 },
+  // Below the floating web header (headerPad), or it hides the X.
+  exit: { top: 12 + headerPad, right: 12 },
   first: { paddingRight: 28 },
   panelDown: { top: -4 },
   // The anchor has no height, so these offsets are from the row's top: the card always covers the branch at 8px.
@@ -233,8 +277,9 @@ const styles = StyleSheet.create({
   entry: { flex: 1, gap: 2 },
   branch: { width: 10, height: 2, marginTop: 8, backgroundColor: colors.border },
   dot: { width: 12, height: 12, borderRadius: 6, marginTop: 3, backgroundColor: colors.bg, borderWidth: 2, borderColor: colors.subtle },
-  dotOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  on: { backgroundColor: colors.primary },
+  // Covers the ring too (-2: the border width), so a selected dot is solid.
+  dotFill: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 6, backgroundColor: colors.primary },
+  branchFill: { ...StyleSheet.absoluteFill, backgroundColor: colors.primary },
   typeOn: { color: colors.primary },
   right: { textAlign: 'right' },
   flip: { flexDirection: 'row-reverse' },

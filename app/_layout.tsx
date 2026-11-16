@@ -22,6 +22,8 @@ export default function RootLayout() {
         // No back arrow: the menu is the navigation. Our own header, so it can hide on scroll.
         // Rendered as an element: navigation calls header() as a plain function, which would run Header's hooks inline.
         header: (props) => <Header {...props} />,
+        // Web: the header floats over the page and slides; ui.screen leaves room for it (headerPad).
+        headerTransparent: Platform.OS === 'web',
         contentStyle: { backgroundColor: colors.bg },
       }}
     />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Step } from './Steps';
 import { colors, fonts, ui } from '../theme';
 
 import type { Hazard } from '../kit/rules';
@@ -71,7 +72,11 @@ export function WaterTreatment(props: Props) {
   return (
     <View style={styles.section}>
       <Text accessibilityRole="header" style={styles.heading}>If you need to make water safe</Text>
-      {g.steps.map((s) => line(s))}
+      {g.steps.map((s) => (
+        <Step key={s.id}>
+          {line(s)}
+        </Step>
+      ))}
     </View>
   );
 }

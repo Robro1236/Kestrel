@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 // Design tokens. Change the look here; screens and cards read from it.
 // Style: a warm field guide (think Stripe Press). Full principles: docs/DESIGN.md. Rules for every screen:
@@ -24,6 +24,7 @@ export const colors = {
   border: '#e6e0d6',
   track: '#e6e0d6',
   primary: '#0f5e57',
+  veil: 'rgba(245,242,236,0.82)', // greys out a finished card under its big check
   primarySoft: '#e4efec',
   success: '#0f5e57',
   successSoft: '#e4efec',
@@ -34,6 +35,10 @@ export const colors = {
   warnInk: '#7c2d12',
   warnSoft: '#fff4e5',
 };
+
+// On web the header floats over the page (it slides away on scroll), so scroll content starts below it.
+export const HEADER_BAR = 64;
+export const headerPad = Platform.OS === 'web' ? HEADER_BAR : 0;
 
 export const ui = StyleSheet.create({
   card: {
@@ -48,4 +53,4 @@ export const ui = StyleSheet.create({
   pageTitle: { fontFamily: fonts.display, fontSize: 34, color: colors.ink, letterSpacing: -0.4 },
   cardTitle: { fontSize: 24, fontFamily: fonts.display, color: colors.ink, letterSpacing: -0.3 },
   eyebrow: { fontSize: 12, fontFamily: fonts.bold, color: colors.subtle, letterSpacing: 0.8, textTransform: 'uppercase' },
-  screen: { padding: 16, paddingBottom: 40, gap: 14, width: '100%', maxWidth: 600, alignSelf: 'center' },});
+  screen: { padding: 16, paddingTop: 16 + headerPad, paddingBottom: 40, gap: 14, width: '100%', maxWidth: 600, alignSelf: 'center' },});

@@ -51,6 +51,8 @@ These have no automated check; the reviewer (`/review`) confirms them on any dif
 
 Watch items:
 - `prepared_count()` is `count(*)` over `kit_plans` on every home-screen focus. Fine to roughly a million rows; past that, keep a counter row instead.
+- Done in migration 0002: the counter is now one `plan_counter` row, so the line above no longer applies. `maintain()` deletes cache rows older than 30 days, so the database stays bounded.
+- Unattended running: a daily Vercel cron (`api/keepalive.ts`) calls `maintain()`, which also keeps the free Supabase project from pausing. If Vercel's cron log shows failures, the project pauses within about a week.
 - Cold cells: if many people in a new area open the app at the same second, each one calls the upstreams before the first result is cached. Fine for a demo; add request coalescing if a real launch targets one town.
 
 ## Measured, not yet enforced
@@ -66,6 +68,7 @@ Watch items:
 
 | ID | Rule | Path | Reason | Owner | Expires |
 |----|------|------|--------|-------|---------|
+| E1 | assertion-removed | src/supabase.test.ts | Migration 0002 moved the counter from a `kit_plans` insert to the `record_plan()` RPC. The 3 insert assertions were replaced by 2 RPC assertions (called twice, called with `record_plan`); the test still covers one count per device and retry after a failure. | Milklatte | 2026-12-15 |
 
 ## Commands
 

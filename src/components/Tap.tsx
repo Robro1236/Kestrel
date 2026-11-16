@@ -7,8 +7,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // A Pressable that springs down a little while held, so buttons feel physical.
 // perspective keeps it on its own layer on web, so it does not snap to the pixel grid (a visible jump) when the spring settles.
-export function Tap({ style, onPressIn, onPressOut, ...rest }: PressableProps & { style?: StyleProp<ViewStyle> }) {
-  const scale = useRef(new Animated.Value(1)).current;
+// scale: pass a shared value so several pieces (a timeline dot, its branch, its text) press down together.
+export function Tap({ style, onPressIn, onPressOut, scale: shared, ...rest }: PressableProps & { style?: StyleProp<ViewStyle>; scale?: Animated.Value }) {
+  const own = useRef(new Animated.Value(1)).current;
+  const scale = shared ?? own;
   return (
     <AnimatedPressable
       {...rest}

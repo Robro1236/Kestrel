@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import Family, { cardHtml, EMPTY_PLAN, planText } from '../app/family';
+import Family, { cardHtml, EMPTY_PLAN, planText, type MemberPage } from '../app/family';
 import { FamilyPlanLink } from './components/FamilyPlanLink';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -95,4 +95,30 @@ test('family: card is tailored to the household', async () => {
   await render(<Family />);
   expect(await screen.findByText('Made for your household: 2 adults, 1 infant, 1 dog.')).toBeTruthy();
   expect(screen.getByText('School and work')).toBeTruthy();
+});
+
+// protects=each person gets their own page, Next moves to the next person, and Print puts every person on one card; fails_when=pages don't follow the household, one person's answers show on another's page, or a person is missing from the print or share text; no_claim=the print dialog itself
+test('family: one page per person, printed together', async () => {
+  const { memberSlots } = require('../app/family');
+  expect(memberSlots({ adults: 2, seniors: 0, children: 1, infants: 0 }).map((m: { label: string }) => m.label)).toEqual(['Adult', 'Adult 2', 'Child']);
+  expect(memberSlots(null)).toEqual([]);
+
+  await AsyncStorage.setItem('household', JSON.stringify({ adults: 2, seniors: 0, children: 1, infants: 0, dogs: 0, cats: 0, medication: false, mobility: false }));
+  await render(<Family />);
+  await fireEvent.changeText(await screen.findByLabelText('Name, Adult'), 'Dad');
+  await fireEvent.changeText(screen.getByLabelText('Medical needs, Adult'), 'Insulin');
+  await fireEvent.press(screen.getByRole('button', { name: 'Next: Adult 2' }));
+  expect(screen.getByLabelText('Name, Adult 2').props.value).toBe('');
+  await fireEvent.press(screen.getByRole('tab', { name: 'Child' }));
+  expect(screen.getByText('School')).toBeTruthy();
+  await fireEvent.changeText(screen.getByLabelText('School, Child'), 'Lincoln Elementary');
+  await waitFor(async () => expect(JSON.parse(await AsyncStorage.getItem('familyMembers'))[2]).toMatchObject({ school: 'Lincoln Elementary' }));
+  expect(JSON.parse(await AsyncStorage.getItem('familyMembers'))[0]).toMatchObject({ name: 'Dad', medical: 'Insulin' });
+
+  const pages: MemberPage[] = [{ name: 'Dad', rows: [['Medical needs', 'Insulin'], ['School and work', '']] }, { name: 'Child', rows: [['Medical needs', ''], ['School', 'Lincoln Elementary']] }];
+  const html = cardHtml(EMPTY_PLAN, { members: pages });
+  expect(html).toContain('<h2>Dad</h2><dl><dt>Medical needs</dt><dd>Insulin</dd>');
+  expect(html).toContain('<h2>Child</h2>');
+  expect(html).not.toContain('<dt>School, childcare and work</dt>');
+  expect(planText(EMPTY_PLAN, pages)).toBe('Our family emergency plan\nDad, medical needs: Insulin\nChild, school: Lincoln Elementary');
 });

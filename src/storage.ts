@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Every call swallows storage errors: if storage fails the app still works for this session.
+// Every call swallows storage errors: if storage fails, the app still works for this session.
 
 export async function load<T>(key: string): Promise<T | null> {
   try {

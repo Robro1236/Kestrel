@@ -24,12 +24,13 @@ export type FamilyPlan = {
   schools: string;
   pets: string;
   shutoffs: string;
+  homeInsurance: string;
   zone: string;
 };
 
 export const EMPTY_PLAN: FamilyPlan = {
   nearHome: '', outsideArea: '', contactName: '', contactPhone: '', contacts: '',
-  medical: '', doctors: '', insurance: '', schools: '', pets: '', shutoffs: '', zone: '',
+  medical: '', doctors: '', insurance: '', schools: '', pets: '', shutoffs: '', homeInsurance: '', zone: '',
 };
 
 // On every card. Poison Help is the US national line (HRSA, https://poisonhelp.hrsa.gov), checked 2026-11-15.
@@ -47,6 +48,7 @@ const FIELDS: { key: keyof FamilyPlan; label: string; hint?: string; multiline?:
   { key: 'schools', label: 'School, childcare and work', hint: 'Phone for each, and where they take people in an emergency.', multiline: true },
   { key: 'pets', label: 'Pet details', hint: "Names, microchip numbers, the vet's phone, and a pet-friendly place to stay.", multiline: true },
   { key: 'shutoffs', label: 'Utility shutoffs', hint: 'Where the main water valve, gas meter and electric panel are, and any tool you need.', multiline: true },
+  { key: 'homeInsurance', label: 'Home or renters insurance', hint: 'Company, policy number and phone.', multiline: true },
   { key: 'zone', label: 'Evacuation zone', hint: "Your county's code for where you live. Look it up on your county's evacuation map." },
 ];
 
@@ -57,7 +59,7 @@ const GROUPS: [string, (keyof FamilyPlan)[]][] = [
   ['Health', ['medical', 'doctors', 'insurance']],
   ['School and work', ['schools']],
   ['Pets', ['pets']],
-  ['Home', ['shutoffs', 'zone']],
+  ['Home', ['shutoffs', 'homeInsurance', 'zone']],
 ];
 
 // "Dog", "Dog 2", "Cat": one photo slot per pet in the household.
@@ -66,11 +68,14 @@ export function petSlots(h: Pick<Household, 'dogs' | 'cats'> | null): string[] {
   return [...n('Dog', h?.dogs ?? 0), ...n('Cat', h?.cats ?? 0)];
 }
 
-// One page per person: name, medical needs, and school or work. The rest of the card is shared.
-export type Member = { name: string; medical: string; school: string };
+// One page per person: their phone, health and school or work. The rest of the card is shared.
+export type Member = { name: string; phone: string; medical: string; doctors: string; insurance: string; school: string };
+const EMPTY_MEMBER: Member = { name: '', phone: '', medical: '', doctors: '', insurance: '', school: '' };
 type Kind = 'adult' | 'senior' | 'child' | 'infant';
-// The household's medical and school fields move onto each person's page; kept if already filled in.
-const PER_PERSON: (keyof FamilyPlan)[] = ['medical', 'schools'];
+// The household's phones, health and school fields move onto each person's page; kept if already filled in.
+const PER_PERSON: (keyof FamilyPlan)[] = ['contacts', 'medical', 'doctors', 'insurance', 'schools'];
+// Without a household, the one Insurance field covers the home too.
+const hiddenWhenEmpty = (perPerson: boolean) => (perPerson ? PER_PERSON : ['homeInsurance']);
 
 // "Adult", "Adult 2", "Child": one page per person in the household.
 export function memberSlots(h: Partial<Household> | null): { kind: Kind; label: string }[] {
@@ -130,7 +135,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 export function cardHtml(p: FamilyPlan, { pets = true, photos = [], members }: { pets?: boolean; photos?: string[]; members?: MemberPage[] } = {}): string {
   const imgs = photos.filter((u) => u?.startsWith('data:image/jpeg;base64,')).map((u) => `<img src="${esc(u)}" alt="">`).join('');
   const row = (label: string, value: string) => `<dt>${esc(label)}</dt><dd>${esc(value.trim()).replace(/\n/g, '<br>')}</dd>`;
-  const rows = FIELDS.filter((f) => (pets || f.key !== 'pets') && (!members || !PER_PERSON.includes(f.key) || p[f.key].trim()))
+  const rows = FIELDS.filter((f) => (pets || f.key !== 'pets') && (!hiddenWhenEmpty(!!members).includes(f.key) || p[f.key].trim()))
     .map((f) => `${row(f.label, p[f.key])}${f.key === 'pets' && imgs ? `<dd class="photos">${imgs}</dd>` : ''}`)
     .join('');
   const people = (members ?? []).map((m) => `<h2>${esc(m.name)}</h2><dl>${m.rows.map(([l, v]) => row(l, v)).join('')}</dl>`).join('');
@@ -185,10 +190,13 @@ export default function Family() {
   const hasPets = !household || slots.length > 0 || !!plan.pets.trim() || photos.some(Boolean);
   const people = memberSlots(household);
   const perPerson = people.length > 0;
-  const member = (i: number): Member => members[i] ?? { name: '', medical: '', school: '' };
+  const member = (i: number): Member => ({ ...EMPTY_MEMBER, ...members[i] });
   const nameOf = (i: number) => member(i).name.trim() || people[i].label;
   const schoolLabel = (k: Kind) => (k === 'child' ? 'School' : k === 'infant' ? 'Childcare' : titles['School and work'] ?? 'School and work');
-  const pages: MemberPage[] = people.map((pp, i) => ({ name: nameOf(i), rows: [['Medical needs', member(i).medical], [schoolLabel(pp.kind), member(i).school]] }));
+  const pages: MemberPage[] = people.map((pp, i) => ({ name: nameOf(i), rows: [
+    ['Phone', member(i).phone], ['Medical needs', member(i).medical], ['Doctors and pharmacy', member(i).doctors],
+    ['Health insurance', member(i).insurance], [schoolLabel(pp.kind), member(i).school],
+  ] }));
   const setMember = (key: keyof Member, value: string) =>
     setMembers((ms) => {
       const next = [...ms];
@@ -196,8 +204,8 @@ export default function Family() {
       save('familyMembers', next);
       return next;
     });
-  // On a per-person card, the shared medical and school fields show only if they were filled in before.
-  const shown = (keys: (keyof FamilyPlan)[]) => FIELDS.filter((f) => keys.includes(f.key) && !(perPerson && PER_PERSON.includes(f.key) && !plan[f.key].trim()));
+  // On a per-person card, the shared phones, health and school fields show only if they were filled in before.
+  const shown = (keys: (keyof FamilyPlan)[]) => FIELDS.filter((f) => keys.includes(f.key) && (!hiddenWhenEmpty(perPerson).includes(f.key) || plan[f.key].trim()));
 
   const setPhoto = (i: number, uri: string) =>
     setPhotos((ps) => {
@@ -244,9 +252,12 @@ export default function Family() {
           </View>
           {([
             ['name', 'Name', 'e.g. Dad, or their first name.', false],
+            ['phone', 'Phone', 'Their cell phone, if they have one.', false, true],
             ['medical', 'Medical needs', hints.medical ?? 'Allergies, medicines and doses, conditions, and medical devices.', true],
+            ['doctors', 'Doctors and pharmacy', 'Name and phone for each.', true],
+            ['insurance', 'Health insurance', 'Company, policy number and phone.', true],
             ['school', schoolLabel(people[who].kind), 'Phone, and where they take people in an emergency.', true],
-          ] as [keyof Member, string, string, boolean][]).map(([key, label, hint, multiline]) => (
+          ] as [keyof Member, string, string, boolean, boolean?][]).map(([key, label, hint, multiline, phone]) => (
             <View key={key} style={styles.field}>
               <Text style={styles.label}>{label}</Text>
               <Text style={styles.hint}>{hint}</Text>
@@ -256,6 +267,7 @@ export default function Family() {
                 value={member(who)[key]}
                 onChangeText={(v) => setMember(key, v)}
                 multiline={multiline}
+                keyboardType={phone ? 'phone-pad' : 'default'}
               />
             </View>
           ))}

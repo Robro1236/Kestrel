@@ -122,3 +122,22 @@ test('family: one page per person, printed together', async () => {
   expect(html).not.toContain('<dt>School, childcare and work</dt>');
   expect(planText(EMPTY_PLAN, pages)).toBe('Our family emergency plan\nDad, medical needs: Insulin\nChild, school: Lincoln Elementary');
 });
+
+// protects=each person's page holds their own phone, doctors and health insurance, the shared Health card and phone list go away, and home insurance stays shared; fails_when=a person's phone or insurance is saved to the wrong person, the shared Health card still shows empty, or the print misses the new rows; no_claim=the phone keyboard on a device
+test('family: phone, doctors and health insurance on each person', async () => {
+  await AsyncStorage.setItem('household', JSON.stringify({ adults: 2, seniors: 0, children: 0, infants: 0, dogs: 0, cats: 0, medication: false, mobility: false }));
+  await render(<Family />);
+  await fireEvent.changeText(await screen.findByLabelText('Phone, Adult'), '555-0101');
+  await fireEvent.changeText(screen.getByLabelText('Doctors and pharmacy, Adult'), 'Dr. Lee 555-0102');
+  await fireEvent.changeText(screen.getByLabelText('Health insurance, Adult'), 'Kaiser 123');
+  await waitFor(async () => expect(JSON.parse(await AsyncStorage.getItem('familyMembers'))[0]).toMatchObject({ phone: '555-0101', doctors: 'Dr. Lee 555-0102', insurance: 'Kaiser 123' }));
+  expect(screen.queryByText('Health')).toBeNull();
+  expect(screen.queryByLabelText('Household phones')).toBeNull();
+  expect(screen.getByLabelText('Home or renters insurance')).toBeTruthy();
+
+  const html = cardHtml(EMPTY_PLAN, { members: [{ name: 'Mom', rows: [['Phone', '555-0101'], ['Health insurance', 'Kaiser 123']] }] });
+  expect(html).toContain('<h2>Mom</h2><dl><dt>Phone</dt><dd>555-0101</dd><dt>Health insurance</dt><dd>Kaiser 123</dd>');
+  expect(html).toContain('<dt>Home or renters insurance</dt>');
+  expect(html).not.toContain('<dt>Household phones</dt>');
+  expect(cardHtml(EMPTY_PLAN)).not.toContain('Home or renters insurance');
+});

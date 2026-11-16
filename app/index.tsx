@@ -52,7 +52,8 @@ export default function Home() {
     if (router.canGoBack()) return setReady(true);
     if (Platform.OS === 'web' && typeof location !== 'undefined' && new URLSearchParams(location.search).has('start')) {
       history.replaceState(null, '', '/');
-      startOver().then(() => setReady(true));
+      // The focus check below can read the old plan before it's cleared, so reset it here.
+      startOver().then(() => { setHasPlan(false); setReady(true); });
       return;
     }
     Promise.all([load('household'), load('location')]).then(([h, l]) => (h && l ? router.replace('/plan') : setReady(true)));

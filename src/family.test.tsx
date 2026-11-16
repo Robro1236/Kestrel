@@ -166,6 +166,26 @@ test('family: email the card', async () => {
   expect(url).toContain('911');
 });
 
+// protects=on a phone browser, Email the card attaches the printable card as a file; fails_when=only text is sent or the file isn't the card; no_claim=which apps the share sheet lists
+test('family: email attaches the card on the web', async () => {
+  const { Platform } = require('react-native');
+  const os = Platform.OS;
+  const share = jest.fn().mockResolvedValue(undefined);
+  Object.assign(navigator, { canShare: () => true, share });
+  try {
+    Platform.OS = 'web';
+    await render(<Family />);
+    await fireEvent.changeText(screen.getByLabelText('Meeting place near home'), 'Corner mailbox');
+    await fireEvent.press(screen.getByRole('button', { name: 'Email the card' }));
+  } finally {
+    Platform.OS = os;
+  }
+  const { files, text } = share.mock.calls[0][0];
+  expect(files[0].name).toBe('family-emergency-plan.html');
+  expect(await files[0].text()).toContain('Corner mailbox');
+  expect(text).toContain('911');
+});
+
 // protects=each person's page has its own photo slot, and the printed card shows that person's photo under their name without changing the rows; fails_when=the slot is missing, a photo shows on someone else's page, a non-JPEG URL is printed, or a page without a photo changes; no_claim=the photo picker on a device
 test('family: a photo for each person', async () => {
   const jpeg = 'data:image/jpeg;base64,AAAA';

@@ -243,8 +243,14 @@ export default function Family() {
   // The person picks who gets it in their own mail app.
   // On web, Linking opens mailto in a new tab that phone browsers close at once; same-tab navigation hands it to the mail app.
   const email = () => {
-    const url = `mailto:?subject=${encodeURIComponent('Our family emergency plan')}&body=${encodeURIComponent(`${planText(plan, pages)}
-${KEY_NUMBERS}`)}`;
+    const subject = 'Our family emergency plan';
+    const body = `${planText(plan, pages)}\n${KEY_NUMBERS}`;
+    // mailto can't carry attachments; phone browsers can share the printable card as a file, and Mail attaches it.
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && typeof File !== 'undefined') {
+      const card = new File([cardHtml(plan, { pets: hasPets, photos, members: perPerson ? pages : undefined })], 'family-emergency-plan.html', { type: 'text/html' });
+      if (navigator.canShare?.({ files: [card] })) return void navigator.share({ files: [card], title: subject, text: body }).catch(() => {});
+    }
+    const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.href = url;
     else Linking.openURL(url).catch(() => {});
   };

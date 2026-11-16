@@ -4,13 +4,7 @@
 
 It's free. You don't need an account and you don't install anything.
 
-Code: https://github.com/Robro1236/Kestrel
-
-### ⚡ Quick start (30 seconds)
-
-1. On your **phone**, open **kestrel-tan.vercel.app/?start**
-2. Tap **Make my plan** → **Use my location** (or type a ZIP code and tap the match) → add who lives with you → tap **Build my kit**.
-3. That's your plan. Tap **☰** (top right) to see everything else.
+Q
 
 ---
 
@@ -36,7 +30,7 @@ Kestrel does not make up any safety advice. Every fact comes from a trusted publ
 
 ---
 
-## 📱 Please open it on your PHONE
+## Please open it on your PHONE
 
 > **Use your phone. Kestrel is made for phones first.**
 >
@@ -48,7 +42,7 @@ Kestrel does not make up any safety advice. Every fact comes from a trusted publ
 > - **Email the card** attaches your printable plan as a file.
 > - You can put Kestrel on your home screen like a normal app.
 
-### How to open it on your phone (step by step)
+### Start Guide
 
 1. Pick up your phone and unlock it.
 2. Open your web browser:
@@ -61,14 +55,7 @@ Kestrel does not make up any safety advice. Every fact comes from a trusted publ
 
 **Want a fresh start, like a brand-new user?** Type this link instead:
 **kestrel-tan.vercel.app/?start**
-It clears any old answers on that phone and starts from the beginning. (Good for demos and judges.)
-
-### Put it on your home screen (optional, but handy)
-
-This adds a Kestrel icon to your phone so you can open it with one tap, like any app.
-
-- **iPhone (Safari):** tap the **Share** button (a square with an arrow pointing up) → scroll down → tap **Add to Home Screen** → tap **Add**.
-- **Android (Chrome):** tap the **⋮** (three dots, top right) → tap **Add to Home screen** (or **Install app**) → tap **Add**.
+It clears any old answers on that phone and starts from the beginning. 
 
 ### On a computer
 
@@ -89,7 +76,7 @@ You'll see:
 - Three cards that explain what you'll get: *A kit sized to your home*, *What could hit your area*, and *Ready when the network is down*.
 - **View my plan** shows up only if you already made a plan on this device. Tap it to go straight back to your plan.
 
-👉 **Tap "Make my plan".**
+- **Tap "Make my plan".**
 
 ### Step 2: "Where are you?"
 
@@ -119,7 +106,7 @@ Below that are two switches. Tap a switch to turn it **on** (it turns colored) i
 
 **Why does this matter?** The amounts change with your family. Four people need more water than one. A baby needs formula and diapers. A dog needs dog food. Kestrel only shows you what *your* home needs.
 
-👉 **Tap "Build my kit".**
+- **Tap "Build my kit".**
 
 (**About Kestrel** at the bottom of this screen takes you back to the welcome screen, which explains what Kestrel does.)
 

@@ -7,7 +7,7 @@ import type { IconName } from '../src/components/Icon';
 import { IconBadge, Step } from '../src/components/Steps';
 import { Tap } from '../src/components/Tap';
 import { useLocalArea } from '../src/useLocalArea';
-import { colors, fonts, ui } from '../src/theme';
+import { colors, fonts, ui, pageScroll } from '../src/theme';
 
 // ordered: the lines are a sequence, so they get numbers.
 type Topic = { title: string; icon: IconName; ordered?: boolean; lines: string[]; source: string; link?: [string, string] };
@@ -74,7 +74,7 @@ export default function AfterScreen() {
   // FEMA aid is US only; elsewhere the card would point people to the wrong agency.
   const topics = a.inUs ? [...TOPICS, AID] : TOPICS;
   return (
-    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
+    <ScrollView style={pageScroll} onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
       <PageHeader title="After a disaster" place={a.place.label} />
       {topics.map((t) => (
         <View key={t.title} style={ui.card}>

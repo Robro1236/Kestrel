@@ -1,4 +1,4 @@
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, type ViewStyle } from 'react-native';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
 
 // Design tokens. Change the look here; screens and cards read from it.
@@ -42,6 +42,14 @@ export const colors = {
 export const HEADER_BAR = 64;
 export const statusTop = Platform.OS === 'web' ? 0 : initialWindowMetrics?.insets.top ?? 0;
 export const headerPad = HEADER_BAR + statusTop;
+
+// Web: the document scrolls, not each screen (public/index.html), so iOS Safari can shrink its toolbar while reading.
+// Each screen's ScrollView takes pageScroll to let its content spill into the page; phones keep their own scrolling.
+// RN's types lack these web values; react-native-web passes them through.
+const web = Platform.OS === 'web';
+export const pageScroll = web ? ({ overflowX: 'visible', overflowY: 'visible', transform: 'none' } as unknown as ViewStyle) : undefined;
+// For what must stay on screen while the document scrolls (header, plan strip). Phones: absolute already is.
+export const fixed = web ? ({ position: 'fixed' } as unknown as ViewStyle) : undefined;
 
 export const ui = StyleSheet.create({
   card: {

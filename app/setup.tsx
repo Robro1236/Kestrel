@@ -9,7 +9,7 @@ import { Icon } from '../src/components/Icon';
 import { Loading } from '../src/components/Loading';
 import { isZip, resolveGps, resolveText, searchPlaces, type ResolvedLocation } from '../src/data/location';
 import type { Household } from '../src/kit/rules';
-import { colors, fonts, ui } from '../src/theme';
+import { colors, fonts, ui, pageScroll } from '../src/theme';
 
 const DEFAULT_HOUSEHOLD: Household = {
   adults: 1, seniors: 0, children: 0, infants: 0, dogs: 0, cats: 0, otherPets: 0, medication: false, mobility: false,
@@ -43,7 +43,8 @@ export default function Setup() {
   const fail = (at: 'gps' | 'place' | 'who', text: string) => {
     setError({ at, text });
     // Build sits at the bottom; bring a location error back into view.
-    if (at !== 'who') scroll.current?.scrollTo({ y: 0, animated: true });
+    // Web: the document scrolls, not the ScrollView (theme pageScroll).
+    if (at !== 'who') Platform.OS === 'web' ? window.scrollTo({ top: 0, behavior: 'smooth' }) : scroll.current?.scrollTo({ y: 0, animated: true });
   };
   const errorAt = (at: 'gps' | 'place' | 'who') =>
     error?.at === at ? <Text accessibilityRole="alert" style={styles.error}>{error.text}</Text> : null;
@@ -164,7 +165,7 @@ export default function Setup() {
   // Android: edge-to-edge stops the window resizing for the keyboard, so lift the form ourselves. iOS uses automaticallyAdjustKeyboardInsets.
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined} enabled={Platform.OS === 'android'}>
-    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} ref={scroll} contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <ScrollView style={pageScroll} onScroll={onHeaderScroll} scrollEventThrottle={16} ref={scroll} contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <View style={ui.card}>
       <Text accessibilityRole="header" style={ui.cardTitle}>Where are you?</Text>
       <Tap accessibilityRole="button" style={styles.secondary} onPress={useMyLocation} disabled={busy}>

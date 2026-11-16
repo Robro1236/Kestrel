@@ -7,7 +7,7 @@ import { Logo } from './Logo';
 import { Menu } from './Menu';
 import { Tap } from './Tap';
 import { spring } from '../motion';
-import { colors, fonts, HEADER_BAR as BAR } from '../theme';
+import { colors, fixed, fonts, HEADER_BAR as BAR } from '../theme';
 
 // 1 while the header is on screen, 0 once it has slid away. Shared so the plan's progress strip can ride under it.
 export const headerShown = new Animated.Value(1);
@@ -42,9 +42,11 @@ export function Header({ route }: { route: { name: string } }) {
     hidden = false;
     spring(headerShown, 1);
     if (Platform.OS !== 'web') return;
+    // Web: the document scrolls (theme pageScroll); an inner scroller (a sheet) reports its own scrollTop.
+    window.scrollTo(0, 0);
     const onScroll = (e: Event) => {
       const el = e.target as HTMLElement;
-      if (typeof el.scrollTop === 'number') follow(el.scrollTop);
+      follow(typeof el.scrollTop === 'number' ? el.scrollTop : window.scrollY);
     };
     document.addEventListener('scroll', onScroll, true);
     return () => document.removeEventListener('scroll', onScroll, true);
@@ -54,7 +56,7 @@ export function Header({ route }: { route: { name: string } }) {
   const slide = [{ translateY: headerShown.interpolate({ inputRange: [0, 1], outputRange: [-(BAR + top), 0], extrapolate: 'clamp' }) }];
   return (
     // box-none: once the header slides away, taps and scrolls reach the page under where it was.
-    <View pointerEvents="box-none">
+    <View pointerEvents="box-none" style={fixed && [fixed, styles.pinned]}>
     <Animated.View style={[styles.wrap, { paddingTop: top, transform: slide }]}>
       <View style={styles.bar}>
         {/* The welcome screen has no wordmark. It is a way home: it opens the plan (which sends a new user to setup). */}
@@ -77,6 +79,7 @@ export function Header({ route }: { route: { name: string } }) {
 
 const styles = StyleSheet.create({
   wrap: { backgroundColor: colors.bg },
+  pinned: { top: 0, left: 0, right: 0 },
   status: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: colors.bg },
   bar: { minHeight: BAR, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 16, paddingRight: 8 },
   home: { minHeight: 44, justifyContent: 'center' },

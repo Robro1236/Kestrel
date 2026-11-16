@@ -6,6 +6,7 @@ import { spring } from '../motion';
 
 // Web has no stack transition, so screens swap instantly. This eases each one in when it gains focus.
 // It never delays rendering: content is there from the first frame, only fading up.
+// It moves by top, not a transform: a transform would pin the header's position: fixed to this view, not the window.
 export function ScreenFade({ children }: { children: ReactNode }) {
   const focused = useIsFocused();
   const v = useRef(new Animated.Value(0)).current;
@@ -15,7 +16,7 @@ export function ScreenFade({ children }: { children: ReactNode }) {
     spring(v, 1);
   }, [focused, v]);
   return (
-    <Animated.View style={{ flex: 1, opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }), transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }}>
+    <Animated.View style={{ flex: 1, opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }), top: v.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }}>
       {children}
     </Animated.View>
   );

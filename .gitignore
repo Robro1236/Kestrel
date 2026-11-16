@@ -24,3 +24,4 @@ expo-env.d.ts
 .gstack/tmp/
 .claude/launch.json
 docs/college-app-writeup.md
+docs/VOICEOVER.md

@@ -10,7 +10,7 @@ import { type Declaration, declarationPage, fetchDeclarations } from '../src/dat
 import { localDay } from '../src/date';
 import { popIn, spring } from '../src/motion';
 import { useLocalArea } from '../src/useLocalArea';
-import { colors, fonts, headerPad, ui } from '../src/theme';
+import { colors, fonts, headerPad, ui, pageScroll, fixed } from '../src/theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -52,7 +52,7 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.fill}>
-      <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={styles.grow}>
+      <ScrollView style={pageScroll} onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={styles.grow}>
         {/* A tap anywhere that isn't a control or the open card closes the card. Not a screen-reader stop: the dot toggles it too. */}
         <Pressable accessible={false} focusable={false} disabled={active === null} onPress={() => setActive(null)} style={[ui.screen, styles.grow]}>
         <PageHeader title="Disaster history" place={a.place.label} />
@@ -194,7 +194,8 @@ function FullDetails({ d, onClose }: { d: Declaration; onClose: () => void }) {
   // Shrinks back the way it grew, then unmounts.
   const close = () => spring(shown, 0, { pop: true }, onClose);
   return (
-    <Animated.View accessibilityViewIsModal style={[styles.full, popIn(shown, 8)]}>
+    // Web: fixed over the window wherever the page is scrolled, and it scrolls itself (no pageScroll).
+    <Animated.View accessibilityViewIsModal style={[styles.full, fixed, popIn(shown, 8)]}>
       <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={[ui.screen, styles.fullBody]}>
         <View style={styles.fullHead}>
           <Text style={ui.eyebrow}>{d.date}</Text>

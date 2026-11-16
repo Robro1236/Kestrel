@@ -1,6 +1,6 @@
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, View, type ViewInstance } from 'react-native';
+import { ActivityIndicator, Animated, Platform, Pressable, ScrollView, StyleSheet, Text, View, type ViewInstance } from 'react-native';
 
 import { Tap } from '../src/components/Tap';
 import { AirBanner, useAirQuality } from '../src/components/AirBanner';
@@ -23,7 +23,7 @@ import { buildKit, KIT_GROUPS, type Hazard, type Household, type KitItem, waterG
 import { load, loadResult, recordPlanOnce, save, saveResult, type Saved } from '../src/storage';
 import { lookup, recordPlan } from '../src/supabase';
 import { motionReduced, spring } from '../src/motion';
-import { colors, fonts, headerPad, statusTop, ui } from '../src/theme';
+import { colors, fonts, headerPad, statusTop, ui, pageScroll, fixed } from '../src/theme';
 
 // Response of lookup?kind=area (see docs/SPEC.md).
 export type Area = {
@@ -128,6 +128,24 @@ export default function Plan() {
   const stripTrack = useRef<ViewInstance>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const scrollNow = useRef(0);
+  const onY = (y: number) => {
+    scrollNow.current = y;
+    scrollY.setValue(y);
+    // Pin once the hero bar's centre passes the strip's line (header showing): from there the header hides it. Not before layout.
+    setPinned(bar.mid > 0 && y > bar.heroY + bar.mid - headerPad - STRIP_MID);
+  };
+  // Web: the document scrolls, not the ScrollView (theme pageScroll). Behind another screen, this one stops listening.
+  const focused = useIsFocused();
+  const onYRef = useRef(onY);
+  onYRef.current = onY;
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !focused) return;
+    const onScroll = () => onYRef.current(window.scrollY);
+    // Coming back to this screen, catch up with where the page is now (no scroll event may come).
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [focused]);
   const sparkId = useRef(0);
   const [sparks, setSparks] = useState<Spark[]>([]);
   // Like game XP, the sparks hit the tip of the fill on whichever bar is showing; the bar then grows past them.
@@ -191,16 +209,13 @@ export default function Plan() {
   const alerts = activeOnly(warnings?.data.alerts ?? []).map((a) => a.event);
 
   return (
-    <View ref={page} style={styles.page}>
+    <View style={styles.page}>
     <ScrollView
+      style={pageScroll}
       contentContainerStyle={ui.screen}
       scrollEventThrottle={16}
       onScroll={(e) => {
-        const y = e.nativeEvent.contentOffset.y;
-        scrollNow.current = y;
-        scrollY.setValue(y);
-        // Pin once the hero bar's centre passes the strip's line (header showing): from there the header hides it.
-        setPinned(y > bar.heroY + bar.mid - headerPad - STRIP_MID);
+        onY(e.nativeEvent.contentOffset.y);
         onHeaderScroll(e);
       }}
     >
@@ -332,6 +347,9 @@ export default function Plan() {
         </View>
       ) : null}
     </ScrollView>
+    {/* The strip and sparks stay put while the page scrolls (web: the document scrolls, so this is fixed to the window). */}
+    {focused ? (
+    <View ref={page} pointerEvents="none" style={[StyleSheet.absoluteFill, fixed]}>
     {/* Display only, and a duplicate of the hero bar, so it takes no taps and is hidden from screen readers. */}
     <Animated.View
       pointerEvents="none"
@@ -347,6 +365,8 @@ export default function Plan() {
       <Text style={styles.pct}>{pct}%</Text>
     </Animated.View>
     {sparks.map((s) => <SparkDot key={s.id} spark={s} onDone={(id) => setSparks((all) => all.filter((x) => x.id !== id))} />)}
+    </View>
+    ) : null}
     </View>
   );
 }

@@ -7,7 +7,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 const mockRouter = { replace: jest.fn() }; // one object, like the real hook; a new one each render reruns the plan's effect
-jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
+jest.mock('expo-router', () => ({ useRouter: () => mockRouter, useIsFocused: () => true }));
 jest.mock('./supabase', () => ({
   lookup: jest.fn().mockRejectedValue(new Error('offline')),
   recordPlan: jest.fn().mockRejectedValue(new Error('offline')),

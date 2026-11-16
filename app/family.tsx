@@ -9,7 +9,7 @@ import { Icon } from '../src/components/Icon';
 import { Tap } from '../src/components/Tap';
 import { styles } from '../src/components/familyCardStyles';
 import type { Household } from '../src/kit/rules';
-import { colors } from '../src/theme';
+import { colors, pageScroll } from '../src/theme';
 import { load, save } from '../src/storage';
 
 // Fields follow Ready.gov's family emergency communication plan (https://www.ready.gov/plan).
@@ -258,7 +258,7 @@ export default function Family() {
   // Android: edge-to-edge stops the window resizing for the keyboard, so lift the form ourselves. iOS uses automaticallyAdjustKeyboardInsets.
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined} enabled={Platform.OS === 'android'}>
-    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <ScrollView style={pageScroll} onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <View style={styles.card}>
         <Text accessibilityRole="header" style={styles.title}>Family plan card</Text>
         <Text style={styles.note}>Fill it in together, then print it or share it so everyone has a copy. It is saved on this device only.</Text>

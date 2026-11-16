@@ -14,7 +14,7 @@ import { EMERGENCIES, pickFromAlerts, STEPS_CHECKED } from '../src/kit/emergenci
 import { buildKit } from '../src/kit/rules';
 import { load, saveResult } from '../src/storage';
 import { useLocalArea } from '../src/useLocalArea';
-import { colors, fonts, ui } from '../src/theme';
+import { colors, fonts, ui, pageScroll } from '../src/theme';
 import { distanceKm, type Category } from '../supabase/functions/lookup/places';
 
 const CALL: [Category, string][] = [['hospital', 'Hospital'], ['police', 'Police'], ['fire_station', 'Fire station']];
@@ -74,7 +74,7 @@ export default function NowScreen() {
   });
 
   return (
-    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
+    <ScrollView style={pageScroll} onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
       <PageHeader title="What's happening?" place={a.place.label} />
       <View style={styles.chips}>
         {EMERGENCIES.map((x) => (

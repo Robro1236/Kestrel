@@ -10,7 +10,7 @@ import { IconBadge } from '../src/components/Steps';
 import { Tap } from '../src/components/Tap';
 import { load } from '../src/storage';
 import { preparedCount } from '../src/supabase';
-import { colors, fonts, headerPad, ui } from '../src/theme';
+import { colors, fonts, headerPad, ui, pageScroll } from '../src/theme';
 import { useAppFonts } from '../src/useAppFonts';
 
 const POINTS: [IconName, string, string][] = [
@@ -69,7 +69,7 @@ export default function Home() {
 
   if (!ready) return null;
   return (
-    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} key={fontsLoaded ? 'fonts' : 'system'} contentContainerStyle={[ui.screen, styles.container]}>
+    <ScrollView style={pageScroll} onScroll={onHeaderScroll} scrollEventThrottle={16} key={fontsLoaded ? 'fonts' : 'system'} contentContainerStyle={[ui.screen, styles.container]}>
       <View style={styles.mark}>
         <Logo size={72} />
       </View>

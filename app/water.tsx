@@ -10,7 +10,7 @@ import { WaterSystem } from '../src/components/WaterSystem';
 import { activeOnly } from '../src/data/nws';
 import { waterGallons } from '../src/kit/rules';
 import { useLocalArea } from '../src/useLocalArea';
-import { ui } from '../src/theme';
+import { ui, pageScroll } from '../src/theme';
 
 export default function WaterScreen() {
   const a = useLocalArea();
@@ -29,7 +29,7 @@ export default function WaterScreen() {
   // Keyed, so moving the system card to the bottom keeps its state instead of refetching.
   const cards = [<WaterSafety key="safety" {...props} />, ...(noSystem ? [] : [system]), <HiddenWater key="hidden" gallons={props.gallons} />, <WaterTreatment key="treat" {...props} />, ...(noSystem ? [system] : [])];
   return (
-    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
+    <ScrollView style={pageScroll} onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
       <PageHeader title="Water" place={a.place.label} />
       {cards}
     </ScrollView>

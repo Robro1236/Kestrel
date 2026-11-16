@@ -5,13 +5,13 @@ import { CountyHelp, SAN_JOAQUIN_FIPS } from '../src/components/CountyHelp';
 import { Loading } from '../src/components/Loading';
 import { PageHeader } from '../src/components/PageHeader';
 import { useLocalArea } from '../src/useLocalArea';
-import { colors, fonts, ui } from '../src/theme';
+import { colors, fonts, ui, pageScroll } from '../src/theme';
 
 export default function CountyScreen() {
   const a = useLocalArea();
   if (!a) return <Loading />;
   return (
-    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
+    <ScrollView style={pageScroll} onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
       <PageHeader title="County alerts" place={a.place.label} />
       {a.area?.county_fips === SAN_JOAQUIN_FIPS ? (
         <CountyHelp countyFips={a.area.county_fips} />

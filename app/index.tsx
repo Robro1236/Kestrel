@@ -1,8 +1,8 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
-import type { IconName } from '../src/components/Icon';
+import { Icon, type IconName } from '../src/components/Icon';
 import { IconBadge } from '../src/components/Steps';
 import { Tap } from '../src/components/Tap';
 import { load } from '../src/storage';
@@ -15,6 +15,8 @@ const POINTS: [IconName, string, string][] = [
   ['phone', 'Works offline', 'Saved on your device, ready when the network is down.'],
 ];
 
+export const SHARE_TEXT = "I made our household's emergency plan with Kestrel: a supply kit sized to who lives with us and where we live. Free, no account: https://kestrel-tan.vercel.app";
+
 // Once per app launch: a returning user goes straight to their plan. Later visits (About Kestrel, Back) stay here.
 // shortcut: a deep link to another page, then Home, still redirects once; track the first route if that matters.
 let opened = false;
@@ -23,6 +25,13 @@ export default function Home() {
   const router = useRouter();
   const [hasPlan, setHasPlan] = useState(false);
   const [count, setCount] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
+  // Native and phone browsers open the share sheet; a desktop browser without one copies the text instead.
+  const share = async () => {
+    const web = Platform.OS === 'web' && typeof navigator !== 'undefined';
+    if (web && !navigator.share) return navigator.clipboard?.writeText(SHARE_TEXT).then(() => setCopied(true), () => {});
+    await Share.share({ message: SHARE_TEXT }).catch(() => {}); // closing the sheet is not an error
+  };
   // Blank while the launch check runs, so the welcome page doesn't flash before the redirect.
   const [ready, setReady] = useState(opened);
   useEffect(() => {
@@ -65,6 +74,10 @@ export default function Home() {
           {count.toLocaleString()} {count === 1 ? 'household' : 'households'} prepared
         </Text>
       ) : null}
+      <Tap accessibilityRole="button" accessibilityLabel={copied ? 'Link copied' : 'Share with a neighbor'} onPress={share} style={styles.share}>
+        <Icon name="people" size={18} color={colors.primary} />
+        <Text style={styles.shareText}>{copied ? 'Link copied' : 'Share with a neighbor'}</Text>
+      </Tap>
       <View style={styles.points}>
         {POINTS.map(([icon, title, body]) => (
           <View key={title} style={[ui.card, styles.point]}>
@@ -92,6 +105,8 @@ const styles = StyleSheet.create({
   secondary: { minHeight: 48, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingVertical: 13, alignItems: 'center' },
   secondaryText: { fontFamily: fonts.bold, color: colors.primary, fontSize: 16 },
   count: { fontFamily: fonts.semi, fontSize: 14, fontVariant: ['tabular-nums'], color: colors.success, backgroundColor: colors.successSoft, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, overflow: 'hidden' },
+  share: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 },
+  shareText: { fontFamily: fonts.semi, color: colors.primary, fontSize: 16 },
   points: { width: '100%', gap: 10, marginTop: 14 },
   point: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
   pointText: { flex: 1, gap: 4 },

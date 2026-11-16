@@ -29,3 +29,9 @@ test('Hazards: each hazard opens its Ready.gov advice', async () => {
   await fireEvent.press(row);
   expect(screen.queryByText(/go to your safe place immediately/)).toBeNull();
 });
+
+// protects=the hazards card opens with the county's highest FEMA rating in one line; fails_when=the line names a lower-rated hazard or is missing; no_claim=FEMA ratings are current
+test('Hazards: names the top risk first', async () => {
+  await render(<Hazards hazards={[{ type: 'heat_wave', rating: 'Relatively High' }, { type: 'earthquake', rating: 'Very High' }]} inUs county="San Joaquin County" failed={false} />);
+  expect(screen.getByText("San Joaquin County's top risk: Earthquake, rated Very High. Tap a hazard for what to do.")).toBeTruthy();
+});

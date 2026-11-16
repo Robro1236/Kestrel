@@ -90,6 +90,7 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
   // Read every render: T4 loads `saved` from storage asynchronously, so it often arrives after mount.
   // Storage keeps one places copy, so it may be from another location; over ~1 km away it isn't "nearby" help.
   const savedHere = saved && distanceKm(saved.lat, saved.lon, lat, lon) <= 1 ? saved : null;
+  const dist = (km: number) => (inUs ? `${(km * 0.621).toFixed(1)} mi` : `${km} km`);
   const result = fresh ?? savedHere;
   const [state, setState] = useState<'loading' | 'done' | 'failed'>('loading');
   const [attempt, setAttempt] = useState(0);
@@ -153,7 +154,7 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
           {byCat(c).map((p, i) => (
             <View key={i} style={styles.row}>
               <Text style={styles.name}>
-                {p.name ?? CATEGORY_LABELS[c]} · {p.distance_km} km
+                {p.name ?? CATEGORY_LABELS[c]} · {dist(p.distance_km)}
               </Text>
               {c === 'hospital' && p.phone_source !== 'cms' && OFFICES.test(p.name ?? '') ? <Text style={styles.note}>Not an emergency room.</Text> : null}
               {p.phone ? (
@@ -192,7 +193,7 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
               <View key={i} style={styles.row}>
                 <Text style={styles.name}>
                   {s.name ?? 'Shelter'}
-                  {s.address ? `, ${s.address}` : ''} · {s.distance_km} km
+                  {s.address ? `, ${s.address}` : ''} · {dist(s.distance_km)}
                 </Text>
                 <Link url={directions(s.lat, s.lon)} label={`Directions to ${s.name ?? 'shelter'}`}>
                   Directions
@@ -232,7 +233,7 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
 
       {empty.length ? (
         <View style={styles.section}>
-          <Text accessibilityRole="header" style={ui.cardTitle}>Not found within 10 km</Text>
+          <Text accessibilityRole="header" style={ui.cardTitle}>Not found within {inUs ? '6 miles' : '10 km'}</Text>
           <Text style={styles.note}>{empty.map((c) => CATEGORY_LABELS[c]).join(', ')}</Text>
         </View>
       ) : null}

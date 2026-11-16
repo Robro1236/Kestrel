@@ -17,6 +17,16 @@ beforeAll(() => {
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'anon';
 });
 
+// protects=US places show distance in miles, others in km; fails_when=a US user sees km or the conversion is wrong; no_claim=the distance itself
+test('NearbyHelp: miles in the US, km elsewhere', async () => {
+  globalThis.fetch = jest.fn().mockRejectedValue(new TypeError('Network request failed')) as unknown as typeof fetch;
+  const props = { lat: 37.78, lon: -121.54, county: 'San Joaquin County', saved: result('Walgreens') };
+  await render(<NearbyHelp {...props} inUs />);
+  expect(await screen.findByText(/Walgreens · 0\.7 mi/)).toBeTruthy();
+  await screen.rerender(<NearbyHelp {...props} inUs={false} />);
+  expect(await screen.findByText(/Walgreens · 1\.1 km/)).toBeTruthy();
+});
+
 // protects=acceptance criterion 8 for Nearby help: offline, the saved places show even when storage hands them over after mount; fails_when=`saved` is only read on the first render, so a late value is ignored; no_claim=T4 really saves and passes the result
 test('NearbyHelp: offline, a saved result that arrives late still shows', async () => {
   globalThis.fetch = jest.fn().mockRejectedValue(new TypeError('Network request failed')) as unknown as typeof fetch;

@@ -69,8 +69,8 @@ export function petSlots(h: Pick<Household, 'dogs' | 'cats'> | null): string[] {
 }
 
 // One page per person: their phone, health and school or work. The rest of the card is shared.
-export type Member = { name: string; phone: string; medical: string; doctors: string; insurance: string; school: string };
-const EMPTY_MEMBER: Member = { name: '', phone: '', medical: '', doctors: '', insurance: '', school: '' };
+export type Member = { name: string; phone: string; medical: string; doctors: string; insurance: string; school: string; photo: string };
+const EMPTY_MEMBER: Member = { name: '', phone: '', medical: '', doctors: '', insurance: '', school: '', photo: '' };
 type Kind = 'adult' | 'senior' | 'child' | 'infant';
 // The household's phones, health and school fields move onto each person's page; kept if already filled in.
 const PER_PERSON: (keyof FamilyPlan)[] = ['contacts', 'medical', 'doctors', 'insurance', 'schools'];
@@ -84,7 +84,7 @@ export function memberSlots(h: Partial<Household> | null): { kind: Kind; label: 
 }
 
 // A person's page as label/value rows, for printing and sharing.
-export type MemberPage = { name: string; rows: [string, string][] };
+export type MemberPage = { name: string; rows: [string, string][]; photo?: string };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -133,12 +133,13 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 // Pets are left off for a household without any; pet photos print under the Pets line. Only our own JPEG data URLs are printed.
 // With members, each person gets their own section after the shared one.
 export function cardHtml(p: FamilyPlan, { pets = true, photos = [], members }: { pets?: boolean; photos?: string[]; members?: MemberPage[] } = {}): string {
-  const imgs = photos.filter((u) => u?.startsWith('data:image/jpeg;base64,')).map((u) => `<img src="${esc(u)}" alt="">`).join('');
+  const jpeg = (u?: string) => !!u?.startsWith('data:image/jpeg;base64,');
+  const imgs = photos.filter(jpeg).map((u) => `<img src="${esc(u)}" alt="">`).join('');
   const row = (label: string, value: string) => `<dt>${esc(label)}</dt><dd>${esc(value.trim()).replace(/\n/g, '<br>')}</dd>`;
   const rows = FIELDS.filter((f) => (pets || f.key !== 'pets') && (!hiddenWhenEmpty(!!members).includes(f.key) || p[f.key].trim()))
     .map((f) => `${row(f.label, p[f.key])}${f.key === 'pets' && imgs ? `<dd class="photos">${imgs}</dd>` : ''}`)
     .join('');
-  const people = (members ?? []).map((m) => `<h2>${esc(m.name)}</h2><dl>${m.rows.map(([l, v]) => row(l, v)).join('')}</dl>`).join('');
+  const people = (members ?? []).map((m) => `<h2>${esc(m.name)}</h2>${jpeg(m.photo) ? `<div class="photos"><img src="${esc(m.photo!)}" alt=""></div>` : ''}<dl>${m.rows.map(([l, v]) => row(l, v)).join('')}</dl>`).join('');
   return `<!DOCTYPE html><html><head><title>Family emergency plan</title><style>
 body{font:14px/1.45 system-ui,sans-serif;color:#0f172a;margin:32px}h1{font-size:22px;margin:0 0 16px}
 dt{font-weight:700;margin-top:14px}dd{margin:4px 0 0;min-height:22px;border-bottom:1px solid #94a3b8;padding-bottom:4px}
@@ -197,7 +198,7 @@ export default function Family() {
   const pages: MemberPage[] = people.map((pp, i) => ({ name: nameOf(i), rows: [
     ...(pp.kind === 'infant' ? [] : [['Phone', member(i).phone] as [string, string]]), ['Medical needs', member(i).medical], ['Doctors and pharmacy', member(i).doctors],
     ['Health insurance', member(i).insurance], [schoolLabel(pp.kind), member(i).school],
-  ] }));
+  ], photo: member(i).photo }));
   const setMember = (key: keyof Member, value: string) =>
     setMembers((ms) => {
       const next = [...ms];
@@ -224,14 +225,28 @@ export default function Family() {
       setPhotoError("Couldn't add that photo. Try another one.");
     }
   };
+  const [memberPhotoError, setMemberPhotoError] = useState(false);
+  const addMemberPhoto = async () => {
+    setMemberPhotoError(false);
+    try {
+      const uri = await pickPhoto();
+      if (uri) setMember('photo', uri);
+    } catch {
+      setMemberPhotoError(true);
+    }
+  };
 
   const print = () =>
     Platform.OS === 'web' ? printWeb(cardHtml(plan, { pets: hasPets, photos, members: perPerson ? pages : undefined })) : Share.share({ message: `${planText(plan, pages)}\n${KEY_NUMBERS}` });
 
   // The person picks who gets it in their own mail app.
-  const email = () =>
-    Linking.openURL(`mailto:?subject=${encodeURIComponent('Our family emergency plan')}&body=${encodeURIComponent(`${planText(plan, pages)}
-${KEY_NUMBERS}`)}`).catch(() => {});
+  // On web, Linking opens mailto in a new tab that phone browsers close at once; same-tab navigation hands it to the mail app.
+  const email = () => {
+    const url = `mailto:?subject=${encodeURIComponent('Our family emergency plan')}&body=${encodeURIComponent(`${planText(plan, pages)}
+${KEY_NUMBERS}`)}`;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.href = url;
+    else Linking.openURL(url).catch(() => {});
+  };
 
   // Android: edge-to-edge stops the window resizing for the keyboard, so lift the form ourselves. iOS uses automaticallyAdjustKeyboardInsets.
   return (
@@ -279,6 +294,28 @@ ${KEY_NUMBERS}`)}`).catch(() => {});
               />
             </View>
           ))}
+          <View style={styles.field}>
+            <Text style={styles.label}>Photo</Text>
+            <Text style={styles.hint}>A recent photo, in case you get separated.</Text>
+            <View style={styles.photos}>
+              {member(who).photo ? (
+                <View>
+                  <Image source={{ uri: member(who).photo }} style={styles.photo} accessibilityLabel={`Photo, ${people[who].label}`} />
+                  <Tap accessibilityRole="button" accessibilityLabel={`Remove photo, ${people[who].label}`} onPress={() => setMember('photo', '')} style={styles.removePhoto}>
+                    <View style={styles.removeDot}>
+                      <Icon name="close" size={14} color={colors.surface} />
+                    </View>
+                  </Tap>
+                </View>
+              ) : (
+                <Tap accessibilityRole="button" accessibilityLabel={`Add a photo, ${people[who].label}`} onPress={addMemberPhoto} style={[styles.photo, styles.addPhoto]}>
+                  <Icon name="plus" size={22} color={colors.primary} />
+                  <Text style={styles.addPhotoText}>Add photo</Text>
+                </Tap>
+              )}
+            </View>
+            {memberPhotoError ? <Text style={styles.error}>Couldn't add that photo. Try another one.</Text> : null}
+          </View>
           {who < people.length - 1 ? (
             <Tap accessibilityRole="button" onPress={() => setWho(who + 1)} style={styles.next}>
               <Text style={styles.nextText}>Next: {nameOf(who + 1)}</Text>

@@ -164,3 +164,23 @@ test('family: email the card', async () => {
   expect(url).toContain('Meeting place near home: Corner mailbox');
   expect(url).toContain('911');
 });
+
+// protects=each person's page has its own photo slot, and the printed card shows that person's photo under their name without changing the rows; fails_when=the slot is missing, a photo shows on someone else's page, a non-JPEG URL is printed, or a page without a photo changes; no_claim=the photo picker on a device
+test('family: a photo for each person', async () => {
+  const jpeg = 'data:image/jpeg;base64,AAAA';
+  await AsyncStorage.setItem('household', JSON.stringify({ adults: 2, seniors: 0, children: 0, infants: 0, dogs: 0, cats: 0, medication: false, mobility: false }));
+  await AsyncStorage.setItem('familyMembers', JSON.stringify([{ name: 'Mom', photo: jpeg }]));
+  await render(<Family />);
+  expect(await screen.findByLabelText('Photo, Adult')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('tab', { name: 'Adult 2' }));
+  expect(screen.getByLabelText('Add a photo, Adult 2')).toBeTruthy();
+  expect(screen.queryByLabelText('Photo, Adult 2')).toBeNull();
+  await fireEvent.press(screen.getByRole('tab', { name: 'Mom' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Remove photo, Adult' }));
+  await waitFor(async () => expect(JSON.parse(await AsyncStorage.getItem('familyMembers'))[0].photo).toBe(''));
+
+  const html = cardHtml(EMPTY_PLAN, { members: [{ name: 'Mom', rows: [['Phone', '555']], photo: jpeg }, { name: 'Kid', rows: [['Phone', '']], photo: 'javascript:alert(1)' }] });
+  expect(html).toContain(`<h2>Mom</h2><div class="photos"><img src="${jpeg}" alt=""></div><dl><dt>Phone</dt>`);
+  expect(html).toContain('<h2>Kid</h2><dl>');
+  expect(html).not.toContain('javascript:');
+});

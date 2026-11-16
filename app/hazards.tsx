@@ -1,5 +1,6 @@
 import { ScrollView } from 'react-native';
 
+import { onHeaderScroll } from '../src/components/Header';
 import { AirBanner, useAirQuality } from '../src/components/AirBanner';
 import { Hazards } from '../src/components/Hazards';
 import { Loading } from '../src/components/Loading';
@@ -18,7 +19,7 @@ export default function HazardsScreen() {
   const list = <Hazards key="hazards" hazards={hazards} inUs={a.inUs} county={a.area?.county} fetchedAt={a.area?.fetched_at} failed={a.areaFailed} />;
   const airCard = <AirBanner key="air" air={air} />;
   return (
-    <ScrollView contentContainerStyle={ui.screen}>
+    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
       <PageHeader title="Local hazards" place={a.place.label} />
       {empty ? [airCard, list] : [list, airCard]}
     </ScrollView>

@@ -24,10 +24,10 @@ Kestrel is used by people preparing for, or in the middle of, an emergency. It s
 ## 3. Motion: physical, quick, never in the way
 
 - **Everything that can be pressed reacts.** Use `Tap` for buttons and links: it dips to 93% and springs back with a small overshoot. Small controls such as checkboxes animate just the control (see `Check` in `app/plan.tsx`).
-- **One spring for the whole app** (`spring` in `src/motion.ts`). Use the plain spring for settling and `{ bouncy: true }` for releases and things popping out. Don't hand-tune durations per screen.
-- **Things come from where they belong.** The menu grows from the hamburger's corner; the progress strip slides out from under the header.
+- **One spring for the whole app** (`spring` in `src/motion.ts`). Use the plain spring for settling and `{ bouncy: true }` for releases and things popping out. Don't hand-tune durations per screen. The one exception is `glide`, a steady timed run for the plan's check sparks: they fan out, hang a beat, then curve faster into the progress bar like game XP (path keyframes in `SparkDot`).
+- **Things come from where they belong.** The menu drops from the top centre, just under the status bar; the progress strip slides out from under the header.
 - **Motion never costs loading time.** Content renders on the first frame and only eases in (`ScreenFade`). Never delay navigation or data to let an animation finish.
-- **Respect reduced motion.** `spring` jumps straight to the end value when the device asks for it. Keep all motion going through it.
+- **Respect reduced motion.** `spring` and `glide` jump straight to the end value when the device asks for it. Keep all motion going through it.
 - **Cross-platform only.** Use React Native `Animated`, never web-only libraries (framer-motion and similar), so the app still builds for iOS and Android.
 
 ## 4. Layout and feedback

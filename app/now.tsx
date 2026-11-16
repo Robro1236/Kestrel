@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { onHeaderScroll } from '../src/components/Header';
 import { Icon } from '../src/components/Icon';
 import { Loading } from '../src/components/Loading';
 import { erByTown, fetchNearby, telUrl, titleCase, type PlacesResult } from '../src/components/NearbyHelp';
@@ -73,7 +74,7 @@ export default function NowScreen() {
   });
 
   return (
-    <ScrollView contentContainerStyle={ui.screen}>
+    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
       <PageHeader title="What's happening?" place={a.place.label} />
       <View style={styles.chips}>
         {EMERGENCIES.map((x) => (

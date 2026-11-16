@@ -11,6 +11,7 @@ jest.mock('expo-router', () => ({
   useFocusEffect: (cb: () => void) => require('react').useEffect(cb, [cb]),
 }));
 jest.mock('./supabase', () => ({ preparedCount: jest.fn().mockResolvedValue(null) }));
+jest.mock('./useAppFonts', () => ({ useAppFonts: () => [true, null] }));
 
 // protects=home has a Share with a neighbor button that opens the share sheet with the app link; fails_when=the button is missing or the shared text has no link; no_claim=the phone's share sheet itself
 test('home: share with a neighbor', async () => {

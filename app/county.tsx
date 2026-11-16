@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { onHeaderScroll } from '../src/components/Header';
 import { CountyHelp, SAN_JOAQUIN_FIPS } from '../src/components/CountyHelp';
 import { Loading } from '../src/components/Loading';
 import { PageHeader } from '../src/components/PageHeader';
@@ -10,7 +11,7 @@ export default function CountyScreen() {
   const a = useLocalArea();
   if (!a) return <Loading />;
   return (
-    <ScrollView contentContainerStyle={ui.screen}>
+    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
       <PageHeader title="County alerts" place={a.place.label} />
       {a.area?.county_fips === SAN_JOAQUIN_FIPS ? (
         <CountyHelp countyFips={a.area.county_fips} />

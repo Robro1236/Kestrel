@@ -1,4 +1,5 @@
 import { Platform, StyleSheet } from 'react-native';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
 
 // Design tokens. Change the look here; screens and cards read from it.
 // Style: a warm field guide (think Stripe Press). Full principles: docs/DESIGN.md. Rules for every screen:
@@ -36,9 +37,11 @@ export const colors = {
   warnSoft: '#fff4e5',
 };
 
-// On web the header floats over the page (it slides away on scroll), so scroll content starts below it.
+// The header floats over the page (it slides away on scroll), so scroll content starts below it and the status bar.
+// shortcut: the status bar height is read once at launch; fine in portrait, re-read it if the app ever rotates.
 export const HEADER_BAR = 64;
-export const headerPad = Platform.OS === 'web' ? HEADER_BAR : 0;
+export const statusTop = Platform.OS === 'web' ? 0 : initialWindowMetrics?.insets.top ?? 0;
+export const headerPad = HEADER_BAR + statusTop;
 
 export const ui = StyleSheet.create({
   card: {

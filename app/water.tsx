@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ScrollView } from 'react-native';
 
+import { onHeaderScroll } from '../src/components/Header';
 import { HiddenWater } from '../src/components/HiddenWater';
 import { Loading } from '../src/components/Loading';
 import { PageHeader } from '../src/components/PageHeader';
@@ -28,7 +29,7 @@ export default function WaterScreen() {
   // Keyed, so moving the system card to the bottom keeps its state instead of refetching.
   const cards = [<WaterSafety key="safety" {...props} />, ...(noSystem ? [] : [system]), <HiddenWater key="hidden" gallons={props.gallons} />, <WaterTreatment key="treat" {...props} />, ...(noSystem ? [system] : [])];
   return (
-    <ScrollView contentContainerStyle={ui.screen}>
+    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
       <PageHeader title="Water" place={a.place.label} />
       {cards}
     </ScrollView>

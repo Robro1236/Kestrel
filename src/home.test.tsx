@@ -3,6 +3,8 @@ import { act, render, screen } from '@testing-library/react-native';
 import Home from '../app/index';
 import { preparedCount } from './supabase';
 
+// expo-font needs expo-asset, which Jest can't resolve here; fonts are a no-op in tests.
+jest.mock('./useAppFonts', () => ({ useAppFonts: () => [true, null] }));
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
@@ -23,7 +25,7 @@ test('home: shows the count, hides it on failure', async () => {
 
   jest.mocked(preparedCount).mockResolvedValueOnce(null);
   await render(<Home />);
-  expect(screen.getByRole('button', { name: 'Start' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Make my plan' })).toBeTruthy();
   await act(async () => {}); // let the failed count settle before checking it stays hidden
   expect(screen.queryByText(/prepared/)).toBeNull();
 });

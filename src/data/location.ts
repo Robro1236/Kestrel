@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 
-// countryCode is missing for GPS; lookup?kind=area fills it in.
+// countryCode is missing when GPS can't name the place; lookup?kind=area fills it in.
 export type ResolvedLocation = { lat: number; lon: number; label: string; countryCode?: string };
 
 export const isZip = (q: string) => /^\d{5}$/.test(q.trim());
@@ -50,8 +50,20 @@ export async function resolveGps(): Promise<ResolvedLocation | null> {
     const { granted } = await Location.requestForegroundPermissionsAsync();
     if (!granted) return null;
     const { coords } = await Location.getCurrentPositionAsync();
-    return { lat: coords.latitude, lon: coords.longitude, label: 'Your current location' };
+    return { lat: coords.latitude, lon: coords.longitude, ...(await placeName(coords.latitude, coords.longitude)) };
   } catch {
     return null;
   }
+}
+
+// "Stockton, California 95202" for the place box. Unsupported on web and can fail offline; the fix is still good without it.
+async function placeName(latitude: number, longitude: number): Promise<{ label: string; countryCode?: string }> {
+  try {
+    const [p] = await Location.reverseGeocodeAsync({ latitude, longitude });
+    const label = [p?.city ?? p?.subregion, [p?.region, p?.postalCode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    if (label) return { label, ...(p?.isoCountryCode ? { countryCode: p.isoCountryCode } : {}) };
+  } catch (e) {
+    console.warn('Reverse geocode unavailable', e);
+  }
+  return { label: 'Your current location' };
 }

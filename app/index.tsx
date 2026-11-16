@@ -4,16 +4,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { Platform, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName } from '../src/components/Icon';
+import { onHeaderScroll } from '../src/components/Header';
+import { Logo } from '../src/components/Logo';
 import { IconBadge } from '../src/components/Steps';
 import { Tap } from '../src/components/Tap';
 import { load } from '../src/storage';
 import { preparedCount } from '../src/supabase';
 import { colors, fonts, headerPad, ui } from '../src/theme';
+import { useAppFonts } from '../src/useAppFonts';
 
 const POINTS: [IconName, string, string][] = [
-  ['people', 'Sized to you', 'Water, food and medicine for exactly who lives with you.'],
-  ['pin', 'Local risks', 'FEMA hazards, live NWS warnings and EPA water records.'],
-  ['phone', 'Works offline', 'Saved on your device, ready when the network is down.'],
+  ['people', 'A kit sized to your home', 'How much water, food and medicine your household needs, item by item.'],
+  ['pin', 'What could hit your area', "Your county's top disaster risks, live weather warnings, and the nearest help."],
+  ['phone', 'Ready when the network is down', 'Your plan saves on this device and still opens offline.'],
 ];
 
 export const SHARE_TEXT = "I made our household's emergency plan with Kestrel: a supply kit sized to who lives with us and where we live. Free, no account: https://kestrel-tan.vercel.app";
@@ -39,6 +42,8 @@ export default function Home() {
     if (web && !navigator.share) return navigator.clipboard?.writeText(SHARE_TEXT).then(() => setCopied(true), () => {});
     await Share.share({ message: SHARE_TEXT }).catch(() => {}); // closing the sheet is not an error
   };
+  // This page can lay out before the fonts load; Android keeps the system-font measurements and clips the text. Re-lay out once they're in.
+  const [fontsLoaded] = useAppFonts();
   // Blank while the launch check runs, so the welcome page doesn't flash before the redirect.
   const [ready, setReady] = useState(opened);
   useEffect(() => {
@@ -64,20 +69,21 @@ export default function Home() {
 
   if (!ready) return null;
   return (
-    <ScrollView contentContainerStyle={[ui.screen, styles.container]}>
+    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} key={fontsLoaded ? 'fonts' : 'system'} contentContainerStyle={[ui.screen, styles.container]}>
       <View style={styles.mark}>
-        <Text style={styles.markText}>K</Text>
+        <Logo size={72} />
       </View>
       <Text accessibilityRole="header" style={styles.title}>
         Kestrel
       </Text>
-      <Text style={styles.pitch}>An emergency kit sized to your household and your area.</Text>
+      <Text style={styles.pitch}>Be ready for a disaster. Tell us where you live and who lives with you, and get your household's emergency plan.</Text>
       <View style={styles.actions}>
-        <Tap accessibilityRole="button" style={styles.primary} onPress={() => router.push('/setup')}>
-          <Text style={styles.primaryText}>Start</Text>
+        <Tap accessibilityRole="button" style={styles.primary} onPress={() => router.replace('/setup')}>
+          <Text style={styles.primaryText}>Make my plan</Text>
         </Tap>
+        <Text style={styles.note}>Free, about a minute, no account.</Text>
         {hasPlan ? (
-          <Tap accessibilityRole="button" style={styles.secondary} onPress={() => router.push('/plan')}>
+          <Tap accessibilityRole="button" style={styles.secondary} onPress={() => router.replace('/plan')}>
             <Text style={styles.secondaryText}>View my plan</Text>
           </Tap>
         ) : null}
@@ -108,15 +114,15 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 32 + headerPad },
-  mark: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(15,94,87,0.28)' },
-  markText: { fontFamily: fonts.display, color: '#fff', fontSize: 32 },
-  title: { fontFamily: fonts.display, fontSize: 48, color: colors.ink, letterSpacing: -1, marginTop: 6 },
-  pitch: { fontFamily: fonts.body, fontSize: 17, color: colors.muted, textAlign: 'center', maxWidth: 340 },
+  mark: { borderRadius: 16, boxShadow: '0 8px 24px rgba(15,94,87,0.28)' },
+  title: { fontFamily: fonts.display, fontSize: 48, lineHeight: 58, color: colors.ink, letterSpacing: -1, marginTop: 6, alignSelf: 'stretch', textAlign: 'center' },
+  pitch: { fontFamily: fonts.body, fontSize: 17, color: colors.muted, textAlign: 'center', width: '100%', maxWidth: 340 },
   actions: { width: '100%', maxWidth: 340, gap: 10, marginTop: 10 },
   primary: { backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   primaryText: { fontFamily: fonts.bold, color: '#fff', fontSize: 18 },
   secondary: { minHeight: 48, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingVertical: 13, alignItems: 'center' },
   secondaryText: { fontFamily: fonts.bold, color: colors.primary, fontSize: 16 },
+  note: { fontFamily: fonts.body, fontSize: 14, color: colors.muted, textAlign: 'center' },
   count: { fontFamily: fonts.semi, fontSize: 14, fontVariant: ['tabular-nums'], color: colors.success, backgroundColor: colors.successSoft, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, overflow: 'hidden' },
   share: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 },
   shareText: { fontFamily: fonts.semi, color: colors.primary, fontSize: 16 },

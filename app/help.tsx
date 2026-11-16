@@ -1,5 +1,6 @@
 import { ScrollView } from 'react-native';
 
+import { onHeaderScroll } from '../src/components/Header';
 import { Loading } from '../src/components/Loading';
 import { PageHeader } from '../src/components/PageHeader';
 import { NearbyHelp } from '../src/components/NearbyHelp';
@@ -11,7 +12,7 @@ export default function HelpScreen() {
   const a = useLocalArea();
   if (!a) return <Loading />;
   return (
-    <ScrollView contentContainerStyle={ui.screen}>
+    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
       <PageHeader title="Nearby help" place={a.place.label} />
       <NearbyHelp
         lat={a.place.lat}

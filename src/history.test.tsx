@@ -4,6 +4,9 @@ import { Linking } from 'react-native';
 import History from '../app/history';
 import { useLocalArea } from './useLocalArea';
 
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
 jest.mock('./useLocalArea', () => ({ useLocalArea: jest.fn() }));
 const area = { place: { lat: 0, lon: 0, label: 'Kalaupapa, HI' }, inUs: true, area: { county: 'Kalawao County', county_fips: '15005' } } as never;
 const row = (disasterNumber: number, declarationDate: string, incidentType: string, declarationTitle: string) => ({

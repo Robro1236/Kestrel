@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, type ScrollViewInstance, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, ScrollView, type ScrollViewInstance, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
+import { onHeaderScroll } from '../src/components/Header';
 import { Tap } from '../src/components/Tap';
 import { Icon } from '../src/components/Icon';
 import { Loading } from '../src/components/Loading';
@@ -11,7 +12,7 @@ import type { Household } from '../src/kit/rules';
 import { colors, fonts, ui } from '../src/theme';
 
 const DEFAULT_HOUSEHOLD: Household = {
-  adults: 1, seniors: 0, children: 0, infants: 0, dogs: 0, cats: 0, medication: false, mobility: false,
+  adults: 1, seniors: 0, children: 0, infants: 0, dogs: 0, cats: 0, otherPets: 0, medication: false, mobility: false,
 };
 
 const COUNTS: [keyof Household, string][] = [
@@ -21,6 +22,7 @@ const COUNTS: [keyof Household, string][] = [
   ['infants', 'Infants (under 2)'],
   ['dogs', 'Dogs'],
   ['cats', 'Cats'],
+  ['otherPets', 'Other pets (birds, rabbits…)'],
 ];
 
 const FLAGS: [keyof Household, string][] = [
@@ -100,9 +102,11 @@ export default function Setup() {
   }, []);
 
   const step = (key: keyof Household, by: number) =>
-    setHousehold((h) => ({ ...h, [key]: Math.min(20, Math.max(0, (h[key] as number) + by)) }));
+    setHousehold((h) => ({ ...h, [key]: Math.min(20, Math.max(0, ((h[key] as number | undefined) ?? 0) + by)) }));
 
   async function useMyLocation() {
+    // A focused box shows what's typed, not the found place, so let go of it.
+    Keyboard.dismiss();
     setBusy(true);
     setError(null);
     const found = await resolveGps();
@@ -146,7 +150,8 @@ export default function Setup() {
       await AsyncStorage.setItem('kitBuilt', '1').catch(() => {});
       // They opened another page from the menu during the wait: don't pull them back, and leave Setup usable.
       if (!navigation.isFocused()) return setBuilding(false);
-      // replace, not push: Edit household -> Build must not stack a second plan screen.
+      // Never stack a second plan: drop everything back to the first screen, then swap in a fresh plan (it loads on mount, so it shows the edit).
+      if (router.canDismiss()) router.dismissAll();
       router.replace('/plan');
     } catch {
       fail('place', "Couldn't reach the location service. Check your connection and try again.");
@@ -159,7 +164,7 @@ export default function Setup() {
   // Android: edge-to-edge stops the window resizing for the keyboard, so lift the form ourselves. iOS uses automaticallyAdjustKeyboardInsets.
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined} enabled={Platform.OS === 'android'}>
-    <ScrollView ref={scroll} contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} ref={scroll} contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <View style={ui.card}>
       <Text accessibilityRole="header" style={ui.cardTitle}>Where are you?</Text>
       <Tap accessibilityRole="button" style={styles.secondary} onPress={useMyLocation} disabled={busy}>
@@ -248,8 +253,8 @@ export default function Setup() {
       <Tap accessibilityRole="button" style={styles.primary} onPress={build} disabled={busy}>
         {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Build my kit</Text>}
       </Tap>
-      {/* The welcome screen left the menu; this is its way back. */}
-      <Tap accessibilityRole="link" style={styles.welcome} onPress={() => router.push('/')}>
+      {/* The welcome screen left the menu; this is its way back. replace, so a back swipe never lands on it (or on here from it). */}
+      <Tap accessibilityRole="link" style={styles.welcome} onPress={() => router.replace('/')}>
         <Text style={styles.welcomeText}>About Kestrel</Text>
       </Tap>
     </ScrollView>

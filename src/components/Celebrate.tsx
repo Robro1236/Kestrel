@@ -2,22 +2,39 @@ import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet } from 'react-native';
 
 import { Icon } from './Icon';
-import { spring } from '../motion';
+import { glide, spring } from '../motion';
 import { colors } from '../theme';
 
 // A green spark flying out from behind a checked box (it fades and grows in over the box) into the progress bar. All in page coordinates.
 // targetY is live (it follows scrolling), so a spark still lands on the bar if the user scrolls mid-flight.
-export type Spark = { id: number; x: number; y: number; tx: number; targetY: Animated.AnimatedNode; delay: number };
+export type Spark = { id: number; x: number; y: number; tx: number; targetY: Animated.AnimatedNode; delay: number; dx: number; dy: number };
 
+// Like game XP: the sparks pop out in a little fan, hang a beat, then curve in faster and faster to the bar.
+const FLIGHT_MS = 1000;
+// When the first spark reaches the bar (the plan starts filling it then).
+export const SPARK_LAND_MS = FLIGHT_MS - 100;
 export function SparkDot({ spark, onDone }: { spark: Spark; onDone: (id: number) => void }) {
   const t = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    const id = setTimeout(() => spring(t, 1, { layout: true }, () => onDone(spark.id)), spark.delay);
+    // Native driver: targetY shares headerShown with the plan's strip, which runs natively, so a JS animation here throws on phones.
+    const id = setTimeout(() => glide(t, 1, FLIGHT_MS, () => onDone(spark.id)), spark.delay);
     return () => clearTimeout(id);
     // Runs once per spark; onDone is a new function each render.
   }, [t, spark]);
-  // y = start + (target - start) * t, written so the live target can be an Animated node.
-  const top = Animated.add(t.interpolate({ inputRange: [0, 1], outputRange: [spark.y, 0] }), Animated.multiply(spark.targetY, t));
+  // The fan-out, gone again by the time the pull is under way.
+  const burst = (d: number) => t.interpolate({ inputRange: [0, 0.08, 0.22, 0.6], outputRange: [0, d * 0.75, d, 0], extrapolate: 'clamp' });
+  // Progress toward the bar. Height leads width, so the path bends (up first, then across); both speed up at the end.
+  const py = t.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 0, 0.3, 0.68, 1] });
+  const px = [0, 0, 0.08, 0.3, 1];
+  // y = start + (target - start) * py, written so the live target can be an Animated node.
+  const top = Animated.add(
+    Animated.add(py.interpolate({ inputRange: [0, 1], outputRange: [spark.y, 0] }), Animated.multiply(spark.targetY, py)),
+    burst(spark.dy),
+  );
+  const left = Animated.add(
+    t.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: px.map((p) => spark.x + (spark.tx - spark.x) * p) }),
+    burst(spark.dx),
+  );
   return (
     <Animated.View
       pointerEvents="none"
@@ -25,11 +42,11 @@ export function SparkDot({ spark, onDone }: { spark: Spark; onDone: (id: number)
       style={[
         styles.spark,
         {
-          opacity: t.interpolate({ inputRange: [0, 0.15, 0.8, 1], outputRange: [0, 1, 1, 0] }),
+          opacity: t.interpolate({ inputRange: [0, 0.08, 0.9, 1], outputRange: [0, 1, 1, 0] }),
           transform: [
-            { translateX: t.interpolate({ inputRange: [0, 1], outputRange: [spark.x, spark.tx] }) },
+            { translateX: left },
             { translateY: top },
-            { scale: t.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.2, 1.3, 0.5] }) },
+            { scale: t.interpolate({ inputRange: [0, 0.15, 0.6, 1], outputRange: [0.3, 1.3, 1, 0.5] }) },
           ],
         },
       ]}

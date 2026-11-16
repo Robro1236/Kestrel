@@ -51,6 +51,7 @@ test('FamilyPlanLink: opens the family plan card', async () => {
 test('family: pet photos follow the household and print under Pets', async () => {
   const { petSlots } = require('../app/family');
   expect(petSlots({ dogs: 2, cats: 1 })).toEqual(['Dog', 'Dog 2', 'Cat']);
+  expect(petSlots({ dogs: 0, cats: 0, otherPets: 2 })).toEqual(['Pet', 'Pet 2']);
   expect(petSlots(null)).toEqual([]);
 
   // No household saved yet: the general card, pets included.

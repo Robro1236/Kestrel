@@ -4,6 +4,7 @@ import { Image, KeyboardAvoidingView, Linking, Platform, ScrollView, Share, Text
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
+import { onHeaderScroll } from '../src/components/Header';
 import { Icon } from '../src/components/Icon';
 import { Tap } from '../src/components/Tap';
 import { styles } from '../src/components/familyCardStyles';
@@ -63,9 +64,9 @@ const GROUPS: [string, (keyof FamilyPlan)[]][] = [
 ];
 
 // "Dog", "Dog 2", "Cat": one photo slot per pet in the household.
-export function petSlots(h: Pick<Household, 'dogs' | 'cats'> | null): string[] {
+export function petSlots(h: Pick<Household, 'dogs' | 'cats' | 'otherPets'> | null): string[] {
   const n = (kind: string, count: number) => Array.from({ length: count }, (_, i) => (i ? `${kind} ${i + 1}` : kind));
-  return [...n('Dog', h?.dogs ?? 0), ...n('Cat', h?.cats ?? 0)];
+  return [...n('Dog', h?.dogs ?? 0), ...n('Cat', h?.cats ?? 0), ...n('Pet', h?.otherPets ?? 0)];
 }
 
 // One page per person: their phone, health and school or work. The rest of the card is shared.
@@ -90,7 +91,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 
 // "2 adults, 1 infant, 1 dog" for the card's header.
 export function householdSummary(h: Household): string {
-  const parts: [number, string, string?][] = [[h.adults, 'adult'], [h.seniors, 'senior'], [h.children, 'child', 'children'], [h.infants, 'infant'], [h.dogs, 'dog'], [h.cats, 'cat']];
+  const parts: [number, string, string?][] = [[h.adults, 'adult'], [h.seniors, 'senior'], [h.children, 'child', 'children'], [h.infants, 'infant'], [h.dogs, 'dog'], [h.cats, 'cat'], [h.otherPets ?? 0, 'other pet']];
   return parts.filter(([n]) => n > 0).map(([n, one, many]) => plural(n, one, many)).join(', ');
 }
 
@@ -251,7 +252,7 @@ ${KEY_NUMBERS}`)}`;
   // Android: edge-to-edge stops the window resizing for the keyboard, so lift the form ourselves. iOS uses automaticallyAdjustKeyboardInsets.
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined} enabled={Platform.OS === 'android'}>
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <View style={styles.card}>
         <Text accessibilityRole="header" style={styles.title}>Family plan card</Text>
         <Text style={styles.note}>Fill it in together, then print it or share it so everyone has a copy. It is saved on this device only.</Text>
@@ -391,7 +392,7 @@ ${KEY_NUMBERS}`)}`;
       <Tap accessibilityRole="button" style={[styles.next, { marginTop: 12 }]} onPress={email}>
         <Text style={styles.nextText}>Email the card</Text>
       </Tap>
-      <Tap accessibilityRole="link" onPress={() => router.replace('/plan')} style={styles.linkHit}>
+      <Tap accessibilityRole="link" onPress={() => router.dismissTo('/plan')} style={styles.linkHit}>
         <Text style={styles.link}>Back to your plan</Text>
       </Tap>
       <Text style={styles.source}>Source: Ready.gov, Make a Plan and Pets.</Text>

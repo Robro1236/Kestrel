@@ -5,6 +5,8 @@ export type Household = {
   infants: number;
   dogs: number;
   cats: number;
+  // Birds, rabbits, reptiles and the like. Optional: households saved before it existed have none.
+  otherPets?: number;
   medication: boolean;
   mobility: boolean;
 };
@@ -80,16 +82,16 @@ function hazardCheck(hazards: Hazard[]) {
     hazards.some((x) => types.includes(x.type) && isAtLeastModerate(x.rating));
 }
 
-// 3-day kit: 1 gal per person per day, 3 per dog, 1 per cat, +1 per person where heat waves are a risk.
+// 3-day kit: 1 gal per person per day, 3 per dog, 1 per cat or other small pet, +1 per person where heat waves are a risk.
 export function waterGallons(h: Household, hazards: Hazard[]): number {
   const people = peopleIn(h);
   const heat = hazardCheck(hazards)('heat_wave') ? people : 0;
-  return Math.ceil(people * 3 + h.dogs * 3 + h.cats + heat);
+  return Math.ceil(people * 3 + h.dogs * 3 + h.cats + (h.otherPets ?? 0) + heat);
 }
 
 export function buildKit(h: Household, hazards: Hazard[]): KitItem[] {
   const people = peopleIn(h);
-  const pets = h.dogs + h.cats;
+  const pets = h.dogs + h.cats + (h.otherPets ?? 0);
   // Masks and helmets aren't made for children under 2, so infants don't get them.
   const wearers = people - h.infants;
   const risk = hazardCheck(hazards);

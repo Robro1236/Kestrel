@@ -64,6 +64,10 @@ test('senior or mobility items', () => {
 test('medication and pet items', () => {
   expect(ids({ ...base, medication: true }).filter((i) => !BASE_IDS.includes(i))).toEqual(['medications', 'medication-list']);
   expect(ids({ ...base, cats: 1 }).filter((i) => !BASE_IDS.includes(i))).toEqual(['pet-food', 'pet-carrier', 'pet-records', 'pet-photo']);
+  // A rabbit or bird gets the same pet items and a cat's water; a household saved before otherPets existed still adds up.
+  expect(ids({ ...base, otherPets: 1 }).filter((i) => !BASE_IDS.includes(i))).toEqual(['pet-food', 'pet-carrier', 'pet-records', 'pet-photo']);
+  expect(waterGallons({ ...base, otherPets: 2 }, [])).toBe(8);
+  expect(waterGallons(base, [])).toBe(6);
 });
 
 // protects=each FEMA hazard type adds its own items and nothing else

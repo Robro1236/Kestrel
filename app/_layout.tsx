@@ -1,8 +1,3 @@
-import { InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif/400Regular';
-import { PlusJakartaSans_400Regular } from '@expo-google-fonts/plus-jakarta-sans/400Regular';
-import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans/600SemiBold';
-import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
@@ -11,10 +6,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../src/components/Header';
 import { ScreenFade } from '../src/components/ScreenFade';
 import { colors } from '../src/theme';
+import { useAppFonts } from '../src/useAppFonts';
 
 export default function RootLayout() {
   // Fonts ship in the bundle. Never wait on them: until they load (or if they fail) text uses the system font.
-  useFonts({ InstrumentSerif_400Regular, PlusJakartaSans_400Regular, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold });
+  useAppFonts();
   const bottom = useSafeAreaInsets().bottom;
   useEffect(registerOffline, []);
   return (
@@ -26,8 +22,8 @@ export default function RootLayout() {
         // No back arrow: the menu is the navigation. Our own header, so it can hide on scroll.
         // Rendered as an element: navigation calls header() as a plain function, which would run Header's hooks inline.
         header: (props) => <Header {...props} />,
-        // Web: the header floats over the page and slides; ui.screen leaves room for it (headerPad).
-        headerTransparent: Platform.OS === 'web',
+        // The header floats over the page and slides; ui.screen leaves room for it (headerPad).
+        headerTransparent: true,
         // Bottom inset keeps the last card clear of the iPhone home indicator and the Android nav bar (edge-to-edge).
         contentStyle: { backgroundColor: colors.bg, paddingBottom: bottom },
       }}

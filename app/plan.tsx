@@ -4,11 +4,11 @@ import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, V
 
 import { Tap } from '../src/components/Tap';
 import { AirBanner, useAirQuality } from '../src/components/AirBanner';
-import { DONE_HOLD_MS, DoneOverlay, type Spark, SparkDot } from '../src/components/Celebrate';
+import { DONE_HOLD_MS, DoneOverlay, SPARK_LAND_MS, type Spark, SparkDot } from '../src/components/Celebrate';
 import { Collapse } from '../src/components/Collapse';
 import { CountyHelp } from '../src/components/CountyHelp';
 import { FamilyPlanLink } from '../src/components/FamilyPlanLink';
-import { headerShown } from '../src/components/Header';
+import { headerShown, onHeaderScroll } from '../src/components/Header';
 import { Icon } from '../src/components/Icon';
 import { KitReminders } from '../src/components/KitReminders';
 import { Warnings } from '../src/components/Warnings';
@@ -22,8 +22,8 @@ import { activeOnly, fetchWarnings, type Warnings as WarningsData } from '../src
 import { buildKit, KIT_GROUPS, type Hazard, type Household, type KitItem, waterGallons } from '../src/kit/rules';
 import { load, loadResult, recordPlanOnce, save, saveResult, type Saved } from '../src/storage';
 import { lookup, recordPlan } from '../src/supabase';
-import { spring } from '../src/motion';
-import { colors, fonts, headerPad, ui } from '../src/theme';
+import { motionReduced, spring } from '../src/motion';
+import { colors, fonts, headerPad, statusTop, ui } from '../src/theme';
 
 // Response of lookup?kind=area (see docs/SPEC.md).
 export type Area = {
@@ -103,9 +103,15 @@ export default function Plan() {
   // Checkmarks are kept by id; items the household no longer needs just don't count.
   const done = kit.filter((i) => checked.includes(i.id)).length;
   const pct = kit.length ? Math.round((done / kit.length) * 100) : 0;
-  // The bar grows on a spring when the plan loads and on each check.
+  // The bar grows on a spring when the plan loads, and on a check once the sparks reach it (toggle sets flying).
   const fill = useRef(new Animated.Value(0)).current;
-  useEffect(() => spring(fill, pct, { layout: true }), [fill, pct]);
+  const flying = useRef(false);
+  useEffect(() => {
+    const wait = flying.current && !motionReduced() ? SPARK_LAND_MS : 0;
+    flying.current = false;
+    const id = setTimeout(() => spring(fill, pct, { layout: true }), wait);
+    return () => clearTimeout(id);
+  }, [fill, pct]);
   const width = fill.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'], extrapolate: 'clamp' });
   // Once the hero's progress bar scrolls off screen, a slim copy slides out from under the header.
   const bar = useRef({ heroY: 0, bottom: 0 }).current;
@@ -113,30 +119,33 @@ export default function Plan() {
   const strip = useRef(new Animated.Value(0)).current;
   useEffect(() => spring(strip, pinned ? 1 : 0), [strip, pinned]);
   // The strip rides just under the header (web: it floats and slides away).
-  const under = headerShown.interpolate({ inputRange: [0, 1], outputRange: [0, headerPad], extrapolate: 'clamp' });
+  // Tracks the header's bottom edge exactly (it slides headerPad tall), then rests under the status bar: no gap mid-slide.
+  const under = headerShown.interpolate({ inputRange: [0, statusTop / headerPad, 1], outputRange: [statusTop, statusTop, headerPad], extrapolate: 'clamp' });
 
   // On each check, green sparks fly from the box into the bar. Positions are in the page's coordinates.
   const page = useRef<ViewInstance>(null);
   const track = useRef<ViewInstance>(null);
+  const stripTrack = useRef<ViewInstance>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const scrollNow = useRef(0);
   const sparkId = useRef(0);
   const [sparks, setSparks] = useState<Spark[]>([]);
-  const fly = (box: ViewInstance | null | undefined, toPct: number) =>
+  // Like game XP, the sparks hit the tip of the fill on whichever bar is showing; the bar then grows past them.
+  const fly = (box: ViewInstance | null | undefined) =>
     page.current?.measureInWindow((px, py) =>
-      box?.measureInWindow((bx, by, bw, bh) => track.current?.measureInWindow((tx, ty, tw, th) => {
+      box?.measureInWindow((bx, by, bw, bh) => track.current?.measureInWindow((tx, ty, tw, th) => (pinned ? stripTrack : track).current?.measureInWindow((ax, _ay, aw) => {
         // The hero bar's centre moves with scrolling; once it's above the pinned strip, aim at the strip instead.
         const base = ty - py + th / 2 + scrollNow.current;
         const hero = scrollY.interpolate({ inputRange: [0, 1], outputRange: [base, base - 1] });
-        const stripMid = headerShown.interpolate({ inputRange: [0, 1], outputRange: [21, 21 + headerPad], extrapolate: 'clamp' });
+        const stripMid = Animated.add(under, 21);
         const targetY = Animated.add(stripMid, Animated.subtract(hero, stripMid).interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolateLeft: 'clamp' }));
-        // shortcut: x aims at the hero bar's fill edge even when the narrower strip is showing; measure the strip too if that looks off.
-        const x = tx - px + (tw * toPct) / 100;
+        // shortcut: the bar is picked at launch; a scroll that pins or unpins the strip mid-flight lands on the other bar's x.
+        const x = ax - px + (aw * pct) / 100;
         const born = [0, 1, 2, 3, 4].map((i) => ({
-          id: ++sparkId.current, x: bx + bw / 2 - px + (i - 2) * 2, y: by + bh / 2 - py + (i % 2 ? 2 : -2), tx: x, targetY, delay: i * 45,
+          id: ++sparkId.current, x: bx + bw / 2 - px + (i - 2) * 2, y: by + bh / 2 - py + (i % 2 ? 2 : -2), tx: x, targetY, delay: i * 70, dx: (i - 2) * 16, dy: -12 - (2 - Math.abs(i - 2)) * 8,
         }));
         setSparks((s) => [...s, ...born]);
-      })),
+      }))),
     );
   // Kit cards that just got their last check: greyed with a big check until they fold.
   const [celebrating, setCelebrating] = useState<string[]>([]);
@@ -155,7 +164,10 @@ export default function Plan() {
       setCelebrating((c) => (complete ? [...c, g] : c.filter((x) => x !== g)));
       if (complete) timers.push(setTimeout(() => setCelebrating((c) => c.filter((x) => x !== g)), DONE_HOLD_MS + 500));
     }
-    if (adding && kit.length) fly(box, Math.round(((done + 1) / kit.length) * 100));
+    if (adding && kit.length) {
+      flying.current = true;
+      fly(box);
+    }
     setChecked((c) => {
       const next = c.includes(id) ? c.filter((x) => x !== id) : [...c, id];
       save('checked', next);
@@ -188,6 +200,7 @@ export default function Plan() {
         scrollNow.current = y;
         scrollY.setValue(y);
         setPinned(y > bar.heroY + bar.bottom);
+        onHeaderScroll(e);
       }}
     >
       <View style={[ui.card, styles.hero]} onLayout={(e) => (bar.heroY = e.nativeEvent.layout.y)}>
@@ -327,7 +340,7 @@ export default function Plan() {
       style={[styles.strip, { opacity: strip, transform: [{ translateY: Animated.add(under, strip.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] })) }] }]}
     >
       <Text style={styles.note}>{done} of {kit.length} ready</Text>
-      <View style={[styles.track, styles.stripTrack]}>
+      <View ref={stripTrack} style={[styles.track, styles.stripTrack]}>
         <Animated.View style={[styles.fill, { width }]} />
       </View>
       <Text style={styles.pct}>{pct}%</Text>

@@ -1,9 +1,10 @@
-import { AccessibilityInfo, Animated, Platform } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Platform } from 'react-native';
 
 // One spring for the whole app, so every movement feels the same. Off when the user asks for reduced motion.
 let reduce = false;
 AccessibilityInfo.isReduceMotionEnabled?.().then((v) => (reduce = v)).catch(() => {});
 AccessibilityInfo.addEventListener?.('reduceMotionChanged', (v) => (reduce = v));
+export const motionReduced = () => reduce;
 
 // layout: width and other layout values can't use the native driver; web has none at all.
 // bouncy: a looser spring with visible overshoot, for presses springing back.
@@ -29,3 +30,9 @@ export const popIn = (shown: Animated.Value, dy = -8) => ({
     { scale: shown.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) },
   ],
 });
+
+// A steady run from start to end, for paths shaped by their own keyframes (the plan's XP sparks). Same reduced-motion rule.
+export const glide = (value: Animated.Value, toValue: number, duration: number, onDone?: () => void) =>
+  reduce
+    ? (value.setValue(toValue), onDone?.())
+    : Animated.timing(value, { toValue, duration, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }).start(() => onDone?.());

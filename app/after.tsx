@@ -1,5 +1,6 @@
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { onHeaderScroll } from '../src/components/Header';
 import { Loading } from '../src/components/Loading';
 import { PageHeader } from '../src/components/PageHeader';
 import type { IconName } from '../src/components/Icon';
@@ -73,7 +74,7 @@ export default function AfterScreen() {
   // FEMA aid is US only; elsewhere the card would point people to the wrong agency.
   const topics = a.inUs ? [...TOPICS, AID] : TOPICS;
   return (
-    <ScrollView contentContainerStyle={ui.screen}>
+    <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={ui.screen}>
       <PageHeader title="After a disaster" place={a.place.label} />
       {topics.map((t) => (
         <View key={t.title} style={ui.card}>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { onHeaderScroll } from '../src/components/Header';
 import { Icon } from '../src/components/Icon';
 import { Loading } from '../src/components/Loading';
 import { PageHeader } from '../src/components/PageHeader';
@@ -51,7 +52,7 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.fill}>
-      <ScrollView contentContainerStyle={styles.grow}>
+      <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={styles.grow}>
         {/* A tap anywhere that isn't a control or the open card closes the card. Not a screen-reader stop: the dot toggles it too. */}
         <Pressable accessible={false} focusable={false} disabled={active === null} onPress={() => setActive(null)} style={[ui.screen, styles.grow]}>
         <PageHeader title="Disaster history" place={a.place.label} />
@@ -194,7 +195,7 @@ function FullDetails({ d, onClose }: { d: Declaration; onClose: () => void }) {
   const close = () => spring(shown, 0, { pop: true }, onClose);
   return (
     <Animated.View accessibilityViewIsModal style={[styles.full, popIn(shown, 8)]}>
-      <ScrollView contentContainerStyle={[ui.screen, styles.fullBody]}>
+      <ScrollView onScroll={onHeaderScroll} scrollEventThrottle={16} contentContainerStyle={[ui.screen, styles.fullBody]}>
         <View style={styles.fullHead}>
           <Text style={ui.eyebrow}>{d.date}</Text>
           <Text accessibilityRole="header" style={ui.pageTitle}>{d.type}</Text>
@@ -248,7 +249,7 @@ const styles = StyleSheet.create({
   fullHead: { gap: 4, paddingRight: 48 },
   // 44px touch target in the card's top right; the card's first line leaves room for it.
   corner: { position: 'absolute', top: 0, right: 0, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  // Below the floating web header (headerPad), or it hides the X.
+  // Below the floating header (headerPad), or it hides the X.
   exit: { top: 12 + headerPad, right: 12 },
   first: { paddingRight: 28 },
   panelDown: { top: -4 },

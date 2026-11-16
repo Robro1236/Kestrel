@@ -4,6 +4,8 @@ import { render, screen, waitFor } from '@testing-library/react-native';
 import Home from '../app/index';
 import { preparedCount } from './supabase';
 
+// expo-font needs expo-asset, which Jest can't resolve here; fonts are a no-op in tests.
+jest.mock('./useAppFonts', () => ({ useAppFonts: () => [true, null] }));
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );

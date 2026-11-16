@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, type ScrollViewInstance, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, type ScrollViewInstance, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { Tap } from '../src/components/Tap';
 import { Icon } from '../src/components/Icon';
@@ -156,8 +156,10 @@ export default function Setup() {
   }
 
   if (building) return <Loading />;
+  // Android: edge-to-edge stops the window resizing for the keyboard, so lift the form ourselves. iOS uses automaticallyAdjustKeyboardInsets.
   return (
-    <ScrollView ref={scroll} contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined} enabled={Platform.OS === 'android'}>
+    <ScrollView ref={scroll} contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <View style={ui.card}>
       <Text accessibilityRole="header" style={ui.cardTitle}>Where are you?</Text>
       <Tap accessibilityRole="button" style={styles.secondary} onPress={useMyLocation} disabled={busy}>
@@ -243,6 +245,7 @@ export default function Setup() {
         <Text style={styles.welcomeText}>About Kestrel</Text>
       </Tap>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -56,6 +56,6 @@ export function Header({ route }: { route: { name: string } }) {
 
 const styles = StyleSheet.create({
   wrap: { backgroundColor: colors.bg },
-  bar: { height: BAR, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 16, paddingRight: 8 },
+  bar: { minHeight: BAR, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 16, paddingRight: 8 },
   brand: { fontFamily: fonts.display, fontSize: 24, color: colors.ink },
 });

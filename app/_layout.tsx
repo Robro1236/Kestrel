@@ -5,6 +5,7 @@ import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/70
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Header } from '../src/components/Header';
 import { ScreenFade } from '../src/components/ScreenFade';
@@ -13,6 +14,7 @@ import { colors } from '../src/theme';
 export default function RootLayout() {
   // Fonts ship in the bundle. Never wait on them: until they load (or if they fail) text uses the system font.
   useFonts({ InstrumentSerif_400Regular, PlusJakartaSans_400Regular, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold });
+  const bottom = useSafeAreaInsets().bottom;
   return (
     <Stack
       // Native stacks already animate between screens; web needs its own ease-in.
@@ -24,7 +26,8 @@ export default function RootLayout() {
         header: (props) => <Header {...props} />,
         // Web: the header floats over the page and slides; ui.screen leaves room for it (headerPad).
         headerTransparent: Platform.OS === 'web',
-        contentStyle: { backgroundColor: colors.bg },
+        // Bottom inset keeps the last card clear of the iPhone home indicator and the Android nav bar (edge-to-edge).
+        contentStyle: { backgroundColor: colors.bg, paddingBottom: bottom },
       }}
     />
   );

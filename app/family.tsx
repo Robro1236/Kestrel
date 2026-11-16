@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Platform, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
@@ -227,8 +227,10 @@ export default function Family() {
   const print = () =>
     Platform.OS === 'web' ? printWeb(cardHtml(plan, { pets: hasPets, photos, members: perPerson ? pages : undefined })) : Share.share({ message: `${planText(plan, pages)}\n${KEY_NUMBERS}` });
 
+  // Android: edge-to-edge stops the window resizing for the keyboard, so lift the form ourselves. iOS uses automaticallyAdjustKeyboardInsets.
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined} enabled={Platform.OS === 'android'}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <View style={styles.card}>
         <Text accessibilityRole="header" style={styles.title}>Family plan card</Text>
         <Text style={styles.note}>Fill it in together, then print it or share it so everyone has a copy. It is saved on this device only.</Text>
@@ -348,5 +350,6 @@ export default function Family() {
       </Tap>
       <Text style={styles.source}>Source: Ready.gov, Make a Plan and Pets.</Text>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

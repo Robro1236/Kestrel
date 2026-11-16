@@ -2,6 +2,8 @@
 
 **Try it: https://kestrel-tan.vercel.app** (no account, no install)
 
+Code: https://github.com/Robro1236/Kestrel
+
 An emergency plan sized to your household and your area. Enter a ZIP code or city and who lives with you, and in under a minute Kestrel shows:
 
 - a **supply checklist** with real quantities, plus items for your county's FEMA hazards

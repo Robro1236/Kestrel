@@ -10,7 +10,7 @@ In FEMA's 2023 National Household Survey (over 7,600 adults), only 51% said they
 
 Local hazards, Water, Nearby help and County alerts are in the menu (☰, top right). If there's time, the menu also has After a disaster and Disaster history (the county's 25 federal declarations).
 
-1. Open https://kestrel-tan.vercel.app on a phone. No account, no install.
+1. Open https://kestrel-tan.vercel.app/?start on a phone. No account, no install. (`?start` clears earlier answers, so the demo begins at the welcome screen.)
 2. Type `95391` (Mountain House / Tracy, CA). Add 2 adults, 1 infant, 1 dog.
 3. **Supply kit:** the water line says the exact gallons for this household, and infant and dog items appear only because we added them. Check off a few items and the progress bar moves.
 4. **Something happening now?** (card near the top): tap Earthquake. Three things on one screen: what to do now (Ready.gov steps, with source), what to grab from *your* kit (and what isn't packed yet), and who to call: 911, then the nearest ER from the official hospital list. If the Weather Service has an active warning here, the right emergency is already picked.

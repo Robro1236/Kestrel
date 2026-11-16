@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
@@ -21,6 +22,12 @@ export const SHARE_TEXT = "I made our household's emergency plan with Kestrel: a
 // shortcut: a deep link to another page, then Home, still redirects once; track the first route if that matters.
 let opened = false;
 
+// The demo link (?start) opens as a first visit: saved answers go, but the "counted once" mark stays so the count isn't inflated.
+export async function startOver() {
+  const keys = await AsyncStorage.getAllKeys();
+  await AsyncStorage.multiRemove(keys.filter((k) => k !== 'planRecorded'));
+}
+
 export default function Home() {
   const router = useRouter();
   const [hasPlan, setHasPlan] = useState(false);
@@ -38,6 +45,11 @@ export default function Home() {
     if (opened) return;
     opened = true;
     if (router.canGoBack()) return setReady(true);
+    if (Platform.OS === 'web' && typeof location !== 'undefined' && new URLSearchParams(location.search).has('start')) {
+      history.replaceState(null, '', '/');
+      startOver().then(() => setReady(true));
+      return;
+    }
     Promise.all([load('household'), load('location')]).then(([h, l]) => (h && l ? router.replace('/plan') : setReady(true)));
   }, [router]);
 

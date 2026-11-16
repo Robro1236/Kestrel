@@ -113,8 +113,8 @@ export default function Plan() {
     return () => clearTimeout(id);
   }, [fill, pct]);
   const width = fill.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'], extrapolate: 'clamp' });
-  // Once the hero's progress bar scrolls off screen, a slim copy slides out from under the header.
-  const bar = useRef({ heroY: 0, bottom: 0 }).current;
+  // Once the hero's progress bar slides up behind the header, a slim copy slides out from under it.
+  const bar = useRef({ heroY: 0, mid: 0 }).current;
   const [pinned, setPinned] = useState(false);
   const strip = useRef(new Animated.Value(0)).current;
   useEffect(() => spring(strip, pinned ? 1 : 0), [strip, pinned]);
@@ -134,11 +134,11 @@ export default function Plan() {
   const fly = (box: ViewInstance | null | undefined) =>
     page.current?.measureInWindow((px, py) =>
       box?.measureInWindow((bx, by, bw, bh) => track.current?.measureInWindow((tx, ty, tw, th) => (pinned ? stripTrack : track).current?.measureInWindow((ax, _ay, aw) => {
-        // The hero bar's centre moves with scrolling; once it's above the pinned strip, aim at the strip instead.
+        // The hero bar's centre moves with scrolling; once it's above the strip's line, aim at the strip instead.
         const base = ty - py + th / 2 + scrollNow.current;
         const hero = scrollY.interpolate({ inputRange: [0, 1], outputRange: [base, base - 1] });
-        const stripMid = Animated.add(under, 21);
-        const targetY = Animated.add(stripMid, Animated.subtract(hero, stripMid).interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolateLeft: 'clamp' }));
+        const stripMid = Animated.add(under, STRIP_MID);
+        const targetY = pinned ? stripMid : Animated.add(stripMid, Animated.subtract(hero, stripMid).interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolateLeft: 'clamp' }));
         // shortcut: the bar is picked at launch; a scroll that pins or unpins the strip mid-flight lands on the other bar's x.
         const x = ax - px + (aw * pct) / 100;
         const born = [0, 1, 2, 3, 4].map((i) => ({
@@ -199,7 +199,8 @@ export default function Plan() {
         const y = e.nativeEvent.contentOffset.y;
         scrollNow.current = y;
         scrollY.setValue(y);
-        setPinned(y > bar.heroY + bar.bottom);
+        // Pin once the hero bar's centre passes the strip's line (header showing): from there the header hides it.
+        setPinned(y > bar.heroY + bar.mid - headerPad - STRIP_MID);
         onHeaderScroll(e);
       }}
     >
@@ -218,7 +219,7 @@ export default function Plan() {
           accessibilityValue={{ min: 0, max: kit.length, now: done }}
           ref={track}
           style={styles.track}
-          onLayout={(e) => (bar.bottom = e.nativeEvent.layout.y + e.nativeEvent.layout.height)}
+          onLayout={(e) => (bar.mid = e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2)}
         >
           <Animated.View style={[styles.fill, { width }]} />
         </View>
@@ -402,6 +403,8 @@ function Info({ item, open, setOpen, children }: {
   );
 }
 
+// The strip track's centre below the strip's top edge: its paddingVertical plus half a line of text.
+const STRIP_MID = 21;
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   info: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

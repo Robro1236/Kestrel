@@ -30,7 +30,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
 
 // Their own numbers are office lines, not emergency dispatch.
 // OSM tags doctors' offices and clinics as hospitals; by name, these have no emergency room.
-const OFFICES = /\b(offices?|clinic)\b/i;
+const OFFICES = /\b(offices?|clinics?|medical (foundation|group)|urgent care)\b/i;
 const EMERGENCY: Category[] = ['hospital', 'fire_station', 'police'];
 
 // Visited and confirmed to load on this date.

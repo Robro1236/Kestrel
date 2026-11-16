@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Linking, Platform, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
@@ -228,6 +228,11 @@ export default function Family() {
   const print = () =>
     Platform.OS === 'web' ? printWeb(cardHtml(plan, { pets: hasPets, photos, members: perPerson ? pages : undefined })) : Share.share({ message: `${planText(plan, pages)}\n${KEY_NUMBERS}` });
 
+  // The person picks who gets it in their own mail app.
+  const email = () =>
+    Linking.openURL(`mailto:?subject=${encodeURIComponent('Our family emergency plan')}&body=${encodeURIComponent(`${planText(plan, pages)}
+${KEY_NUMBERS}`)}`).catch(() => {});
+
   // Android: edge-to-edge stops the window resizing for the keyboard, so lift the form ourselves. iOS uses automaticallyAdjustKeyboardInsets.
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined} enabled={Platform.OS === 'android'}>
@@ -345,6 +350,9 @@ export default function Family() {
 
       <Tap accessibilityRole="button" style={styles.primary} onPress={print}>
         <Text style={styles.primaryText}>{Platform.OS === 'web' ? 'Print' : 'Share'}</Text>
+      </Tap>
+      <Tap accessibilityRole="button" style={[styles.next, { marginTop: 12 }]} onPress={email}>
+        <Text style={styles.nextText}>Email the card</Text>
       </Tap>
       <Tap accessibilityRole="link" onPress={() => router.replace('/plan')} style={styles.linkHit}>
         <Text style={styles.link}>Back to your plan</Text>

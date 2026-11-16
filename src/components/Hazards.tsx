@@ -43,7 +43,11 @@ export function Hazards({ hazards, inUs, county, fetchedAt, failed }: Props) {
   else if (!inUs) body = <Text style={styles.note}>Hazard data is only available in the US for now.</Text>;
   else if (!shown.length) body = <Text style={styles.note}>No hazards rated Relatively Moderate or higher{county ? ` for ${county}` : ''}.</Text>;
   else
-    body = shown.map((h) => {
+    body = [
+      <Text key="top" style={styles.top}>
+        {county ? `${county}'s` : "Your area's"} top risk: {LABELS[shown[0].type] ?? shown[0].type}, rated {shown[0].rating}. Tap a hazard for what to do.
+      </Text>,
+      ...shown.map((h) => {
       const label = LABELS[h.type] ?? h.type;
       const advice = HAZARD_ADVICE[h.type];
       const expanded = open === h.type;
@@ -91,7 +95,8 @@ export function Hazards({ hazards, inUs, county, fetchedAt, failed }: Props) {
           ) : null}
         </View>
       );
-    });
+    }),
+    ];
   return (
     <View style={styles.section}>
       {body}
@@ -116,6 +121,7 @@ const styles = StyleSheet.create({
   step: { fontFamily: fonts.body, fontSize: 14, color: colors.muted },
   link: { minHeight: 44, justifyContent: 'center' },
   linkText: { fontFamily: fonts.semi, color: colors.primary, fontSize: 15 },
+  top: { fontFamily: fonts.semi, fontSize: 16, color: colors.ink, marginBottom: 4 },
   note: { fontFamily: fonts.body, fontSize: 15, color: colors.muted },
   source: { fontFamily: fonts.body, fontSize: 12, color: colors.subtle },
 });

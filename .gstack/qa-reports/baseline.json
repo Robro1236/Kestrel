@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-15",
+  "url": "https://kestrel-tan.vercel.app",
+  "healthScore": 95,
+  "issues": [
+    { "id": "ISSUE-001", "title": "accessibilityState not exposed on web", "severity": "medium", "category": "accessibility", "status": "fixed-local" },
+    { "id": "ISSUE-002", "title": "Unmatched route shows Expo dev screen", "severity": "low", "category": "ux", "status": "fixed-local" },
+    { "id": "ISSUE-003", "title": "Invalid ZIP looked up twice", "severity": "low", "category": "performance", "status": "deferred" }
+  ],
+  "categoryScores": { "console": 70, "links": 100, "visual": 100, "functional": 100, "ux": 97, "content": 100, "accessibility": 100 }
+}

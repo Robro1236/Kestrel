@@ -56,7 +56,7 @@ export function KitReminders({ inUs }: { inUs: boolean }) {
 
   return (
     <View style={styles.section}>
-      <Tap accessibilityRole="switch" accessibilityState={{ checked: on }} onPress={toggle} style={styles.row}>
+      <Tap accessibilityRole="switch" aria-checked={on} onPress={toggle} style={styles.row}>
         <View style={[styles.box, on && styles.boxOn]}>{on ? <Icon name="check" size={16} color="#fff" weight={3} /> : null}</View>
         <Text style={styles.text}>Remind me to check my kit before heat season (May 15) and fire season (June 15)</Text>
       </Tap>

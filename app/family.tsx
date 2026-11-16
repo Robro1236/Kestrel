@@ -275,7 +275,7 @@ export default function Family() {
           <Text style={styles.hint}>A page for each person in your household. Tap a name to switch. Print puts everyone on one card.</Text>
           <View style={styles.chips}>
             {people.map((pp, i) => (
-              <Tap key={pp.label} accessibilityRole="tab" accessibilityState={{ selected: i === who }} onPress={() => setWho(i)} style={[styles.chip, i === who && styles.chipOn]}>
+              <Tap key={pp.label} accessibilityRole="tab" aria-selected={i === who} onPress={() => setWho(i)} style={[styles.chip, i === who && styles.chipOn]}>
                 <Text style={[styles.chipText, i === who && styles.chipTextOn]}>{nameOf(i)}</Text>
               </Tap>
             ))}

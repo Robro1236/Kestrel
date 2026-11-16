@@ -55,6 +55,7 @@ test('Now: pre-picks from a flood warning, shows kit state and who to call', asy
   expect(await screen.findByText(/active Flood Warning here/)).toBeTruthy();
   expect(screen.getByText('Move to higher ground or a higher floor.')).toBeTruthy();
   expect(screen.getByText(/Source: Ready.gov, Floods/)).toBeTruthy();
+  expect(screen.getByRole('radio', { name: 'Flood', checked: true })).toBeTruthy();
   // No flood hazard or pets, so no boots or carrier; water and radio are packed.
   expect(screen.queryByText(/boots/i)).toBeNull();
   expect(screen.getByLabelText(/^Water.*, packed$/)).toBeTruthy();
@@ -64,8 +65,9 @@ test('Now: pre-picks from a flood warning, shows kit state and who to call', asy
   expect(screen.queryByText('Far Police')).toBeNull();
 
   // Picking another emergency switches the steps and drops the "picked for you" note.
-  await fireEvent.press(screen.getByRole('button', { name: 'Earthquake' }));
+  await fireEvent.press(screen.getByRole('radio', { name: 'Earthquake' }));
   expect(screen.getByText('Expect aftershocks. Be ready to Drop, Cover and Hold On again.')).toBeTruthy();
+  expect(screen.getByRole('radio', { name: 'Earthquake', checked: true })).toBeTruthy();
   expect(screen.queryByText(/active Flood Warning/)).toBeNull();
   await screen.unmount();
 
@@ -92,7 +94,7 @@ test('Now: a saved copy shows first, then a fresh lookup replaces it', async () 
   } as never);
 
   await render(<Now />);
-  await fireEvent.press(screen.getByRole('button', { name: 'Earthquake' }));
+  await fireEvent.press(screen.getByRole('radio', { name: 'Earthquake' }));
   expect(await screen.findByRole('link', { name: 'Call County Hospital, (209) 555-0100' })).toBeTruthy();
   expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('kind=places'), expect.anything());
 });
@@ -112,7 +114,7 @@ test('Now: Hospital is an official ER, not a nearer clinic', async () => {
   } as never);
 
   await render(<Now />);
-  await fireEvent.press(screen.getByRole('button', { name: 'Earthquake' }));
+  await fireEvent.press(screen.getByRole('radio', { name: 'Earthquake' }));
   expect(await screen.findByRole('link', { name: 'Call Sutter Tracy Community Hospital, (209) 835-1500' })).toBeTruthy();
   expect(screen.queryByRole('link', { name: /Tracy Medical Offices/ })).toBeNull();
 });

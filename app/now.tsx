@@ -80,8 +80,8 @@ export default function NowScreen() {
         {EMERGENCIES.map((x) => (
           <Tap
             key={x.id}
-            accessibilityRole="button"
-            accessibilityState={{ selected: x.id === pickedId }}
+            accessibilityRole="radio"
+            aria-checked={x.id === pickedId}
             onPress={() => setChosen(x.id)}
             style={[styles.chip, x.id === pickedId && styles.chipOn]}
           >

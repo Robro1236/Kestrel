@@ -379,7 +379,7 @@ function Check({ on, label, onPress, children }: { on: boolean; label: string; o
   return (
     <Pressable
       accessibilityRole="checkbox"
-      accessibilityState={{ checked: on }}
+      aria-checked={on}
       accessibilityLabel={label}
       onPress={() => onPress(box.current)}
       onPressIn={() => spring(scale, 0.78)}

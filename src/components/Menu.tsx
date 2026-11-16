@@ -87,7 +87,8 @@ export function Menu({ top = 0 }: { top?: number }) {
             <Tap
               key={label}
               accessibilityRole="link"
-              accessibilityState={{ disabled: href === path, selected: href === path }}
+              aria-disabled={href === path}
+              aria-selected={href === path}
               disabled={href === path}
               onPress={() => go(href)}
               style={styles.item}

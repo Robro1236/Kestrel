@@ -118,7 +118,7 @@ function Event({ d, left, on, up, onToggle, onExpand }: { d: Declaration; left: 
         <Tap
           accessibilityRole="button"
           accessibilityLabel={`Details: ${d.type}, ${d.date}`}
-          accessibilityState={{ expanded: on }}
+          aria-expanded={on}
           hitSlop={16}
           onPress={onToggle}
           scale={press}

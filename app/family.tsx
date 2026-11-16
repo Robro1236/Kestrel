@@ -193,8 +193,9 @@ export default function Family() {
   const member = (i: number): Member => ({ ...EMPTY_MEMBER, ...members[i] });
   const nameOf = (i: number) => member(i).name.trim() || people[i].label;
   const schoolLabel = (k: Kind) => (k === 'child' ? 'School' : k === 'infant' ? 'Childcare' : titles['School and work'] ?? 'School and work');
+  // A baby has no phone of their own.
   const pages: MemberPage[] = people.map((pp, i) => ({ name: nameOf(i), rows: [
-    ['Phone', member(i).phone], ['Medical needs', member(i).medical], ['Doctors and pharmacy', member(i).doctors],
+    ...(pp.kind === 'infant' ? [] : [['Phone', member(i).phone] as [string, string]]), ['Medical needs', member(i).medical], ['Doctors and pharmacy', member(i).doctors],
     ['Health insurance', member(i).insurance], [schoolLabel(pp.kind), member(i).school],
   ] }));
   const setMember = (key: keyof Member, value: string) =>
@@ -259,7 +260,7 @@ export default function Family() {
             ['doctors', 'Doctors and pharmacy', 'Name and phone for each.', true],
             ['insurance', 'Health insurance', 'Company, policy number and phone.', true],
             ['school', schoolLabel(people[who].kind), 'Phone, and where they take people in an emergency.', true],
-          ] as [keyof Member, string, string, boolean, boolean?][]).map(([key, label, hint, multiline, phone]) => (
+          ] as [keyof Member, string, string, boolean, boolean?][]).filter(([key]) => key !== 'phone' || people[who].kind !== 'infant').map(([key, label, hint, multiline, phone]) => (
             <View key={key} style={styles.field}>
               <Text style={styles.label}>{label}</Text>
               <Text style={styles.hint}>{hint}</Text>

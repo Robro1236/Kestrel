@@ -119,3 +119,17 @@ test('NearbyHelp: hospitals on the official ER list come before nearer clinics',
   expect(names[0]).toMatch(/^Sutter Tracy Community Hospital/);
   expect(names[1]).toMatch(/^Tracy Medical Offices/);
 });
+
+// protects=a doctors' office or clinic OSM tags as a hospital is marked as not an emergency room, and real ERs are not; fails_when=Tracy Medical Offices reads as an ER, or a CMS-listed hospital gets the note; no_claim=every clinic's name says so
+test('NearbyHelp: medical offices tagged as hospitals say they are not an emergency room', async () => {
+  globalThis.fetch = jest.fn().mockRejectedValue(new TypeError('Network request failed')) as unknown as typeof fetch;
+  const saved: PlacesResult = {
+    ...result('Walgreens'),
+    places: [
+      { category: 'hospital', name: 'Tracy Medical Offices', phone: null, lat: 37.78, lon: -121.54, distance_km: 7.5 },
+      { category: 'hospital', name: 'Sutter Tracy Community Hospital', phone: '(209) 835-1500', phone_source: 'cms', lat: 37.78, lon: -121.54, distance_km: 9.7 },
+    ],
+  };
+  await render(<NearbyHelp lat={37.78} lon={-121.54} inUs county="San Joaquin County" saved={saved} />);
+  expect(await screen.findAllByText('Not an emergency room.')).toHaveLength(1);
+});

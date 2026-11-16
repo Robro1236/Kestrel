@@ -141,3 +141,13 @@ test('family: phone, doctors and health insurance on each person', async () => {
   expect(html).not.toContain('<dt>Household phones</dt>');
   expect(cardHtml(EMPTY_PLAN)).not.toContain('Home or renters insurance');
 });
+
+// protects=an infant's page has no phone field and the printed card has no Phone row for them; fails_when=a baby is asked for their cell phone; no_claim=older children have phones
+test('family: no phone on an infant page', async () => {
+  await AsyncStorage.setItem('household', JSON.stringify({ adults: 1, seniors: 0, children: 0, infants: 1, dogs: 0, cats: 0, medication: false, mobility: false }));
+  await render(<Family />);
+  expect(await screen.findByLabelText('Phone, Adult')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('tab', { name: 'Infant' }));
+  expect(screen.queryByLabelText('Phone, Infant')).toBeNull();
+  expect(screen.getByLabelText('Childcare, Infant')).toBeTruthy();
+});

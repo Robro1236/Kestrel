@@ -29,6 +29,8 @@ const CATEGORY_LABELS: Record<Category, string> = {
 };
 
 // Their own numbers are office lines, not emergency dispatch.
+// OSM tags doctors' offices and clinics as hospitals; by name, these have no emergency room.
+const OFFICES = /\b(offices?|clinic)\b/i;
 const EMERGENCY: Category[] = ['hospital', 'fire_station', 'police'];
 
 // Visited and confirmed to load on this date.
@@ -153,6 +155,7 @@ export function NearbyHelp({ lat, lon, inUs, county, label, saved, onResult }: P
               <Text style={styles.name}>
                 {p.name ?? CATEGORY_LABELS[c]} · {p.distance_km} km
               </Text>
+              {c === 'hospital' && p.phone_source !== 'cms' && OFFICES.test(p.name ?? '') ? <Text style={styles.note}>Not an emergency room.</Text> : null}
               {p.phone ? (
                 <Link url={telUrl(p.phone)} label={`Call ${p.name ?? CATEGORY_LABELS[c]}, ${p.phone}`}>
                   {p.phone}

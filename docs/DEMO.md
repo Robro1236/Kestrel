@@ -4,7 +4,7 @@ Before judging: open the plan for `95391` once, so the slow nearby-places lookup
 
 ## The problem (20 s)
 
-Most households aren't ready for an emergency. The FEMA and Red Cross apps give the same checklist to everyone: no quantities, nothing about where you live, nothing about water. Clean water is one of Rotary's focus areas, and it's the first thing people run out of.
+In FEMA's 2023 National Household Survey (over 7,600 adults), only 51% said they were prepared for a disaster. Half the country isn't ready. The FEMA and Red Cross apps give the same checklist to everyone: no quantities, nothing about where you live, nothing about water. Clean water is one of Rotary's focus areas, and it's the first thing people run out of.
 
 ## The flow (2 min)
 

@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   nowCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   grow: { flex: 1 },
   nowTitle: { fontFamily: fonts.semi, fontSize: 17, color: colors.ink },
-  chip: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.primarySoft },
+  chip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.primarySoft },
   chipText: { fontFamily: fonts.bold, color: colors.primary, fontSize: 14 },
   track: { height: 10, borderRadius: 5, backgroundColor: colors.track, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 5, backgroundColor: colors.success },

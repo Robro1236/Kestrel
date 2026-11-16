@@ -4,6 +4,7 @@ import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-san
 import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,6 +16,7 @@ export default function RootLayout() {
   // Fonts ship in the bundle. Never wait on them: until they load (or if they fail) text uses the system font.
   useFonts({ InstrumentSerif_400Regular, PlusJakartaSans_400Regular, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold });
   const bottom = useSafeAreaInsets().bottom;
+  useEffect(registerOffline, []);
   return (
     <Stack
       // Native stacks already animate between screens; web needs its own ease-in.
@@ -31,4 +33,10 @@ export default function RootLayout() {
       }}
     />
   );
+}
+
+// Web build only: a service worker so a reload with no connection still opens the app (public/sw.js). Phones ship the app itself.
+function registerOffline() {
+  if (Platform.OS !== 'web' || __DEV__ || !('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('Offline support unavailable', e));
 }

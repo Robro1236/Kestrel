@@ -174,7 +174,11 @@ export default function Setup() {
         value={focused || query ? query : location?.label ?? ''}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        onChangeText={setQuery}
+        onChangeText={(t) => {
+          setQuery(t);
+          // Typing a place is the fix the GPS error suggests, so the error goes.
+          if (error?.at === 'gps') setError(null);
+        }}
         role="combobox"
         aria-expanded={open}
         {...(Platform.OS === 'web' ? comboAria : {})}
@@ -226,11 +230,15 @@ export default function Setup() {
       ))}
       {FLAGS.map(([key, label]) => (
         <View key={key} style={styles.row}>
-          <Text style={styles.label}>{label}</Text>
+          {/* The label toggles too, so the target is the whole row, not just the small switch. */}
+          <Text style={styles.label} onPress={() => setHousehold((h) => ({ ...h, [key]: !h[key] }))}>{label}</Text>
           <Switch
             accessibilityLabel={label}
             value={household[key] as boolean}
             onValueChange={(v) => setHousehold((h) => ({ ...h, [key]: v }))}
+            trackColor={{ false: colors.subtle, true: colors.primary }}
+            thumbColor={colors.surface}
+            {...(Platform.OS === 'web' ? ({ activeThumbColor: colors.surface } as object) : {})}
           />
         </View>
       ))}

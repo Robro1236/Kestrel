@@ -44,7 +44,7 @@ export function Header({ route }: { route: { name: string } }) {
       <View style={styles.bar}>
         {/* The welcome screen has no wordmark. It is a way home: it opens the plan (which sends a new user to setup). */}
         {route.name === 'index' ? <View /> : (
-          <Tap accessibilityRole="link" accessibilityLabel="Kestrel, go to your plan" onPress={() => router.navigate('/plan')}>
+          <Tap accessibilityRole="link" accessibilityLabel="Kestrel, go to your plan" onPress={() => router.navigate('/plan')} style={styles.home}>
             <Text style={styles.brand}>Kestrel</Text>
           </Tap>
         )}
@@ -57,5 +57,6 @@ export function Header({ route }: { route: { name: string } }) {
 const styles = StyleSheet.create({
   wrap: { backgroundColor: colors.bg },
   bar: { minHeight: BAR, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 16, paddingRight: 8 },
+  home: { minHeight: 44, justifyContent: 'center' },
   brand: { fontFamily: fonts.display, fontSize: 24, color: colors.ink },
 });

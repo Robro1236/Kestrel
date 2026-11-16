@@ -173,7 +173,7 @@ create table public.lookup_cache (
 alter table public.lookup_cache enable row level security;  -- no policies: service role only
 ```
 
-The app inserts one `kit_plans` row the **first** time a device builds a kit (an AsyncStorage flag prevents repeats). The row is `{}`, so it holds only the default `created_at`. The plan screen calls `recordPlanOnce(recordPlan)` (`src/storage.ts`, `src/supabase.ts`) without waiting on it, once the saved household and location load. A failed insert clears the flag, so the next visit retries.
+The app calls `record_plan()` the **first** time a device builds a kit (an AsyncStorage flag prevents repeats). It adds 1 to the single `plan_counter` row (migration 0002) and sends nothing about the household. The plan screen calls `recordPlanOnce(recordPlan)` (`src/storage.ts`, `src/supabase.ts`) without waiting on it, once the saved household and location load. A failed call clears the flag, so the next visit retries. `kit_plans` from 0001 is kept as a record of earlier plans but takes no new rows.
 
 `supabase/functions/lookup/index.ts`: `GET /lookup?kind=area|places&lat=..&lon=..`
 

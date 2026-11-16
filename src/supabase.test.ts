@@ -1,7 +1,5 @@
-const mockInsert = jest.fn();
 const mockRpc = jest.fn();
-const mockFrom = jest.fn(() => ({ insert: mockInsert }));
-jest.mock('@supabase/supabase-js', () => ({ createClient: () => ({ from: mockFrom, rpc: mockRpc }) }));
+jest.mock('@supabase/supabase-js', () => ({ createClient: () => ({ rpc: mockRpc }) }));
 const mockStorage = require('@react-native-async-storage/async-storage/jest/async-storage-mock');
 jest.mock('@react-native-async-storage/async-storage', () => mockStorage);
 
@@ -13,25 +11,24 @@ const { recordPlan, preparedCount } = require('./supabase') as Supa;
 
 beforeEach(() => jest.clearAllMocks());
 
-// protects=the counter goes up by exactly 1 per device, a timestamp-only row, and a failed insert is retried next visit (criterion 12)
-// fails_when=supabase's { error } result is treated as success (flag stays set, row lost), the row carries household or location data, or a second visit inserts again
-// no_claim=does not prove the real kit_plans RLS accepts the insert; checked in the browser network tab
-test('recordPlan + recordPlanOnce: one timestamp-only row per device, retried after a failed insert', async () => {
+// protects=the counter goes up by exactly 1 per device, sends no household data, and a failed call is retried next visit (criterion 12)
+// fails_when=supabase's { error } result is treated as success (flag stays set, count lost), the call carries household or location data, or a second visit counts again
+// no_claim=does not prove the live record_plan() RPC exists; checked in the browser network tab
+test('recordPlan + recordPlanOnce: one count per device, retried after a failed call', async () => {
   await mockStorage.clear();
-  mockInsert.mockResolvedValueOnce({ error: { message: 'offline' } }).mockResolvedValue({ error: null });
+  mockRpc.mockResolvedValueOnce({ error: { message: 'offline' } }).mockResolvedValue({ error: null });
   // Each visit is a fresh page load (new module state) with the same device storage.
   const visit = () => {
     let storage!: Storage;
     jest.isolateModules(() => (storage = require('./storage')));
     return storage.recordPlanOnce(recordPlan);
   };
-  await visit(); // insert fails
+  await visit(); // call fails
   expect(await mockStorage.getItem('planRecorded')).toBe('false');
   await visit(); // retried, succeeds
   await visit(); // already recorded
-  expect(mockInsert).toHaveBeenCalledTimes(2);
-  expect(mockInsert).toHaveBeenLastCalledWith({});
-  expect(mockFrom).toHaveBeenCalledWith('kit_plans');
+  expect(mockRpc).toHaveBeenCalledTimes(2);
+  expect(mockRpc).toHaveBeenLastCalledWith('record_plan');
 });
 
 // protects=the home screen hides the count instead of erroring when it can't load

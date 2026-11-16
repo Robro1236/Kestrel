@@ -14,11 +14,11 @@ export async function lookup<T>(kind: 'area' | 'places', lat: number, lon: numbe
   return data as T;
 }
 
-// One kit_plans row, timestamp only (the table's default). Throws on failure so recordPlanOnce retries next visit.
-// shortcut: the anon key can spam this insert (see the kit_plans migration); add rate limiting if it gets abused.
+// Adds 1 to the single plan_counter row and sends nothing about the household. Throws on failure so recordPlanOnce retries next visit.
+// shortcut: the anon key can spam this RPC (see migration 0002); add rate limiting if it gets abused.
 export async function recordPlan(): Promise<void> {
   if (!supabase) throw new Error('Supabase is not configured');
-  const { error } = await supabase.from('kit_plans').insert({});
+  const { error } = await supabase.rpc('record_plan');
   if (error) throw error;
 }
 

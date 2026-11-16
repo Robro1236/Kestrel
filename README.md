@@ -4,8 +4,6 @@
 
 It's free. You don't need an account and you don't install anything.
 
-Q
-
 ---
 
 ## What is Kestrel?

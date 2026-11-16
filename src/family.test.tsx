@@ -151,3 +151,16 @@ test('family: no phone on an infant page', async () => {
   expect(screen.queryByLabelText('Phone, Infant')).toBeNull();
   expect(screen.getByLabelText('Childcare, Infant')).toBeTruthy();
 });
+
+// protects=Email the card opens the mail app with the plan and key numbers, and leaves the recipient to the person; fails_when=the button is missing, the body drops the plan or key numbers, or a recipient is filled in; no_claim=a mail app is installed
+test('family: email the card', async () => {
+  const { Linking } = require('react-native');
+  const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+  await render(<Family />);
+  await fireEvent.changeText(screen.getByLabelText('Meeting place near home'), 'Corner mailbox');
+  await fireEvent.press(screen.getByRole('button', { name: 'Email the card' }));
+  const url = decodeURIComponent(open.mock.calls[0][0] as string);
+  expect(url.startsWith('mailto:?subject=Our family emergency plan&body=')).toBe(true);
+  expect(url).toContain('Meeting place near home: Corner mailbox');
+  expect(url).toContain('911');
+});

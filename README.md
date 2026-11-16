@@ -12,7 +12,7 @@ An emergency plan sized to your household and your area. Enter a ZIP code or cit
 - **nearby help**: hospitals, pharmacies, fire, police, food banks and open shelters, with directions
 - an **air quality warning** that appears only when the air is unhealthy
 - **your water system** (US): EPA drinking-water violations for the system that serves you
-- a **family plan card**: meeting places and contacts, printable or shareable
+- a **family plan card**: meeting places and contacts, printable, shareable or emailed
 - **San Joaquin County** links: alert sign-up, evacuation zones, cooling centers
 - a **"households prepared"** count on the home screen
 
@@ -36,7 +36,7 @@ Everything is saved on your device, so the plan still opens offline. Every fact 
 - One Expo (React Native + TypeScript) codebase: the web app judges open today, and the same code builds for iOS and Android when Rotary publishes it.
 - A Supabase edge function caches public data so it stays inside free tiers.
 - A service worker keeps the app working offline.
-- 100 automated tests, a bundle-size budget, and load and smoke checks (see [CONSTRAINTS.md](CONSTRAINTS.md)).
+- 101 automated tests, a bundle-size budget, and load and smoke checks (see [CONSTRAINTS.md](CONSTRAINTS.md)).
 
 **What's next.** Store release through Rotary, county links beyond San Joaquin, and more hazard data outside the US.
 

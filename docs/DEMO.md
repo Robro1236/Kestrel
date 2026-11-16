@@ -23,7 +23,7 @@ Local hazards, Water, Nearby help and County alerts are in the menu (☰, top ri
 11. **Family plan card** (link under the title): it says "Made for your household: 2 adults, 1 infant, 1 dog", so it only asks about who lives there.
     - Under Each person, name the first adult "Dad". Add a phone and "Insulin" under Medical needs. Tap Next: the second adult gets their own blank page, and the infant's page asks about Childcare, not work.
     - The Pets card has a photo slot for the dog, in case it gets lost.
-    - Fill in a meeting place and an out-of-area contact, then Print: the shared plan, then one section per person, all on one card.
+    - Fill in a meeting place and an out-of-area contact, then Print: the shared plan, then one section per person, all on one card. **Email the card** opens the mail app with the plan filled in, to send to anyone.
 12. Back on the home screen, "N households prepared" counts every device that has built a kit (each device counts once). Tap **Share with a neighbor**: the phone's share sheet opens with the link, so one prepared household brings in the next.
 13. Turn on airplane mode and reload. The plan and the checkmarks are still there, labelled with when they were saved.
 
